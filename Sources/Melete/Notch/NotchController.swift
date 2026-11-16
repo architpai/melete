@@ -20,6 +20,8 @@ final class NotchController {
     private var layouts: [CGDirectDisplayID: NotchLayout] = [:]
     private var screenInfos: [NotchScreenInfo] = []
     private var picker = NotchScreenPicker()
+    /// True during the session-end move (rule C): a nested re-check must not send the panel home again.
+    private var holdScreen = false
     private var timers: [NotchTimerKind: DispatchWorkItem] = [:]
     private var lastPointer = NSPoint.zero
     private var observers: [NSObjectProtocol] = []
@@ -151,7 +153,7 @@ final class NotchController {
     private func pointerMoved(_ p: NSPoint) {
         lastPointer = p
         guard !debug.pinned else { return }
-        if debug.screenPin == nil, let id = pickScreen(at: p, pinned: !vm.machine.followsPointerScreen),
+        if !holdScreen, debug.screenPin == nil, let id = pickScreen(at: p, pinned: !vm.machine.followsPointerScreen),
            id != screenID, let s = screen(withID: id) {
             moveTo(s)
         }
@@ -169,7 +171,12 @@ final class NotchController {
 
     /// Rule C: the choices open on the pointer's screen, also when it is fullscreen (the user looks there).
     /// After the choice the picker brings the panel back to the home screen.
+    /// A full panel stays where it is (the user works in it; it is key).
     private func sessionReachedZero(_ phase: Phase) {
+        // `moveTo` sends `.screen`, which closes a hover in its exit delay; the re-check after it would
+        // then pick the home screen before the choices pin the panel.
+        holdScreen = true
+        defer { holdScreen = false }
         refreshScreens()
         if vm.machine.expansion != .full, debug.screenPin == nil, let s = NSScreen.containing(NSEvent.mouseLocation) {
             moveTo(s)
