@@ -27,6 +27,7 @@ struct NotchRootView: View {
         .animation(.spring(response: 0.32, dampingFraction: 0.86), value: p)
         .animation(.spring(response: 0.32, dampingFraction: 0.86), value: vm.layout)
         .foregroundStyle(Mono.ink)
+        .tint(Mono.ink) // monochrome caret and focus
         .environment(\.colorScheme, .dark)
         .modelContainer(vm.taskStore.container)
     }

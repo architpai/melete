@@ -23,8 +23,9 @@ struct IdleHoverView: View {
 
     var body: some View {
         let e = vm.engine
+        // The button sits fully below the notch (the mock puts its top 6 pt inside the camera housing).
         VStack(spacing: 0) {
-            Color.clear.frame(height: vm.layout.topInset - 1)
+            Color.clear.frame(height: vm.layout.topInset + 4)
             HStack(spacing: 10) {
                 Button { vm.act { $0.start($0.phase) } } label: {
                     HStack(spacing: 6) {
@@ -36,8 +37,9 @@ struct IdleHoverView: View {
                 Text(Mono.clock(e.durations.duration(of: e.phase)))
                     .font(NotchFont.small).monospacedDigit().foregroundStyle(Mono.ink2)
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            Color.clear.frame(height: 14)
+            .frame(maxWidth: .infinity)
+            .frame(height: 28)
+            Spacer(minLength: 0)
         }
     }
 }

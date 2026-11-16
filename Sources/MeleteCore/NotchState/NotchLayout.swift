@@ -30,7 +30,8 @@ public struct NotchMetrics: Equatable, Sendable {
     /// Invisible hover zone on a screen without a notch (mock 6-I).
     public var hoverZone = CGSize(width: 200, height: 24)
     /// Mock sizes. Expanded heights are for a 32 pt notch; `NotchLayout` adds (top inset − 32).
-    public var idleHoverSize = CGSize(width: 250, height: 62)
+    /// Mock 62 pt tall; 72 here so the Start button sits fully below the notch (32 + 4 + 28 + 8).
+    public var idleHoverSize = CGSize(width: 250, height: 72)
     public var peekSize = CGSize(width: 360, height: 128)
     public var fullSize = CGSize(width: 440, height: 392)
     public var sessionEndSize = CGSize(width: 330, height: 148)

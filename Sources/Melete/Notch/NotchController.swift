@@ -108,7 +108,10 @@ final class NotchController {
     private func updatePanel() {
         panel.allowsKey = vm.machine.wantsKey
         let accepts = !vm.machine.usesHotZone && contains(hitRect(), lastPointer)
-        if panel.ignoresMouseEvents == accepts { panel.ignoresMouseEvents = !accepts }
+        if panel.ignoresMouseEvents == accepts {
+            panel.ignoresMouseEvents = !accepts
+            NotchLog.log("accepts mouse = \(accepts)")
+        }
     }
 
     private func hitRect() -> CGRect {
@@ -127,8 +130,16 @@ final class NotchController {
         if canFollowPointer, let s = NSScreen.containing(p), s.displayID != screenID {
             moveTo(s)
         }
+        let inPanel: CGPoint? = vm.machine.expansion == .full && contains(panel.frame, p)
+            ? CGPoint(x: p.x - panel.frame.minX, y: panel.frame.maxY - p.y) : nil
+        if inPanel != vm.pointerInPanel { vm.pointerInPanel = inPanel; NotchLog.log("inPanel \(String(describing: inPanel))") }
         let inside = contains(hitRect(), p)
-        if inside != vm.machine.pointerInside { send(.pointer(inside: inside)) } else { updatePanel() }
+        if inside != vm.machine.pointerInside {
+            NotchLog.log("pointer inside=\(inside) at \(p)")
+            send(.pointer(inside: inside))
+        } else {
+            updatePanel()
+        }
     }
 
     /// Stay on the screen while the user works in an open panel.

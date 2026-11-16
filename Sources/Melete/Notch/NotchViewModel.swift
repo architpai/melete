@@ -11,6 +11,9 @@ final class NotchViewModel {
     let model: AppModel
     /// Store for the task list. Normally `model.store`; DEBUG `MELETE_DEBUG_SEED=1` uses a seeded in-memory store.
     let taskStore: MeleteStore
+    /// Pointer in SwiftUI window coordinates (top-left origin), only while the full panel shows.
+    /// Drives row hover: SwiftUI `onHover` does not fire in a non-activating panel of an inactive app.
+    var pointerInPanel: CGPoint?
     @ObservationIgnored var send: (NotchEvent) -> Void = { _ in }
 
     init(model: AppModel, taskStore: MeleteStore, machine: NotchMachine, layout: NotchLayout) {
@@ -37,6 +40,7 @@ final class NotchViewModel {
     /// Run an engine action that ends a choice (Start, Break, Focus, +5, Skip, Stop): collapse the notch.
     func act(_ f: (TimerEngine) -> Void) {
         f(engine)
+        send(.engine(status)) // before collapsing, so the shape goes straight to the new state
         send(.actionDone)
     }
 }
