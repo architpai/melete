@@ -32,7 +32,7 @@ public struct TaskStat: Identifiable, Equatable, Sendable {
     }
 }
 
-/// Pure stats over session snapshots. OWNER: sol. Bodies below are stubs; implement + test.
+/// Pure stats over session snapshots, attributed to the calendar day they started.
 /// Definitions (docs/spec.md):
 /// - A pomodoro = a focus snapshot with `counted == true`.
 /// - Focus time = sum of `actualDuration` of focus snapshots (counted or not).

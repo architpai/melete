@@ -191,7 +191,11 @@ public final class TimerEngine {
 
     /// Check the wall clock now. The app calls this on wake from sleep; tests call it after moving time.
     public func reconcile() {
-        guard case let .running(endsAt, total) = state, time.now >= endsAt, let s = session else { return }
+        guard case let .running(endsAt, _) = state, time.now >= endsAt, var s = session else { return }
+        if s.phase == .focus && !s.isExtension {
+            s.taskID = currentTaskID
+            s.intention = intention
+        }
         cancelWake()
         let summary = SessionSummary(
             id: s.id, phase: s.phase, startedAt: s.startedAt, endedAt: endsAt,

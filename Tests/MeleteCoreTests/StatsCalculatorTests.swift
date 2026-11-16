@@ -46,3 +46,67 @@ struct StatsCalculatorTests {
         #expect(StatsCalculator(sessions: [], now: date(16), calendar: calendar).streakDays == 0)
     }
 }
+
+extension StatsCalculatorTests {
+    @Test func rollingWindowsIncludeStartAndExcludeEnd() {
+        let today = date(16, hour: 0)
+        let weekStart = calendar.date(byAdding: .day, value: -6, to: today)!
+        let monthStart = calendar.date(byAdding: .day, value: -29, to: today)!
+        let tomorrow = calendar.date(byAdding: .day, value: 1, to: today)!
+        let c = StatsCalculator(sessions: [session(weekStart), session(weekStart.addingTimeInterval(-1)),
+            session(monthStart), session(monthStart.addingTimeInterval(-1)), session(today), session(tomorrow)],
+            now: date(16), calendar: calendar)
+        #expect(c.last7DaysPomodoros == 2)
+        #expect(c.perDay(.month).reduce(0) { $0 + $1.pomodoros } == 4)
+        #expect(c.perTask(.week).first?.pomodoros == 2)
+        #expect(c.perTask(.month).first?.pomodoros == 4)
+        #expect(c.todaySessions.count == 1)
+    }
+
+    @Test func daylightSavingDaysUseCalendarBoundaries() {
+        let start = date(1, hour: 0)
+        let end = date(2, hour: 0)
+        #expect(end.timeIntervalSince(start) == 25 * 3600)
+        let c = StatsCalculator(sessions: [session(start), session(end.addingTimeInterval(-1)), session(end)],
+            now: date(2), calendar: calendar)
+        let bars = c.perDay(.week)
+        #expect(bars[5].pomodoros == 2)
+        #expect(bars[6].pomodoros == 1)
+        #expect(c.streakDays == 2)
+    }
+
+    @Test func yearIncludesTwelveCalendarMonthsAcrossYearBoundary() {
+        let now = calendar.date(from: DateComponents(year: 2027, month: 1, day: 15))!
+        let first = calendar.date(from: DateComponents(year: 2026, month: 2, day: 1))!
+        let c = StatsCalculator(sessions: [session(first.addingTimeInterval(-1)), session(first), session(now)],
+            now: now, calendar: calendar)
+        #expect(c.perDay(.year).first?.date == first)
+        #expect(c.perDay(.year).first?.pomodoros == 1)
+        #expect(c.perDay(.year).last?.pomodoros == 1)
+        #expect(c.perTask(.year).first?.pomodoros == 2)
+    }
+
+    @Test func overnightSessionsBelongToTheirStartDay() {
+        let midnight = date(16, hour: 0)
+        let c = StatsCalculator(sessions: [session(midnight.addingTimeInterval(-60), seconds: 300),
+            session(midnight, counted: false, seconds: 25)], now: date(16), calendar: calendar)
+        #expect(c.todayPomodoros == 0)
+        #expect(c.focusSecondsToday == 25)
+        #expect(c.perDay(.week)[5].focusSeconds == 300)
+        #expect(c.streakDays == 1)
+    }
+
+    @Test func taskGroupsKeepDistinctIDsAndIncludeUncountedFocusTime() {
+        let a = UUID(), b = UUID()
+        let c = StatsCalculator(sessions: [session(date(16), task: a, title: "Same title"),
+            session(date(16), task: b, title: "Same title"), session(date(16), counted: false, seconds: 20),
+            session(date(16), phase: .shortBreak, counted: false, seconds: 50)],
+            now: date(16), calendar: calendar)
+        let groups = c.perTask(.week)
+        #expect(groups.count == 3)
+        #expect(groups.filter { $0.title == "Same title" }.count == 2)
+        #expect(groups.first { $0.taskID == nil }?.pomodoros == 0)
+        #expect(groups.first { $0.taskID == nil }?.focusSeconds == 20)
+        #expect(c.todaySessions.count == 4)
+    }
+}
