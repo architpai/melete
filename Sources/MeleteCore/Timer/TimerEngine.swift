@@ -98,6 +98,7 @@ public final class TimerEngine {
 
     /// Starts a new session of `phase`. A session that runs now ends as `.reset` (not counted).
     public func start(_ phase: Phase) {
+        reconcile()
         endActiveSession(as: .reset)
         lastCompleted = nil
         rollDayIfNeeded()
@@ -118,6 +119,7 @@ public final class TimerEngine {
     }
 
     public func pause() {
+        reconcile()
         guard case let .running(endsAt, total) = state else { return }
         cancelWake()
         state = .paused(remaining: max(0, endsAt.timeIntervalSince(time.now)), total: total)
@@ -134,6 +136,7 @@ public final class TimerEngine {
     }
 
     public func skip() {
+        reconcile()
         switch state {
         case .running, .paused:
             if phase == .focus {
@@ -153,6 +156,7 @@ public final class TimerEngine {
     }
 
     public func reset() {
+        reconcile()
         guard isActive else { return }
         endActiveSession(as: .reset)
         state = .idle
@@ -183,6 +187,7 @@ public final class TimerEngine {
     }
 
     public func stop() {
+        reconcile()
         endActiveSession(as: .stopped)
         lastCompleted = nil
         phase = .focus

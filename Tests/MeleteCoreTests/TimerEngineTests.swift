@@ -278,3 +278,33 @@ struct TimerContractTests {
         engine.stop()
     }
 }
+
+extension TimerContractTests {
+    @Test(arguments: ["pause", "skip", "reset", "stop", "start"])
+    func actionsAtDeadlineCountBeforeApplyingChoice(action: String) {
+        let (engine, box) = rules.make()
+        engine.startFocus()
+        let deadline = rules.time.now.addingTimeInterval(100)
+        rules.time.advance(by: 100)
+        switch action {
+        case "pause": engine.pause()
+        case "skip": engine.skip()
+        case "reset": engine.reset()
+        case "stop": engine.stop()
+        default: engine.start(.shortBreak)
+        }
+        #expect(box.summaries.count == 1)
+        #expect(box.summaries.first?.counted == true)
+        #expect(box.summaries.first?.endedAt == deadline)
+        #expect(engine.cyclePosition == 1)
+        switch action {
+        case "pause", "reset": #expect(engine.state == .awaitingChoice(ended: .focus))
+        case "skip":
+            #expect(engine.phase == .focus)
+            #expect(engine.remaining(at: rules.time.now) == 100)
+        case "stop": #expect(engine.state == .idle)
+        default: #expect(engine.phase == .shortBreak)
+        }
+        engine.stop()
+    }
+}
