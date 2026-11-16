@@ -4,7 +4,8 @@ import SwiftUI
 
 /// Notch shell entry point. OWNER: opus. Keep these three signatures.
 ///
-/// One transparent panel sits at the top center of the pointer's screen. SwiftUI draws the black shape
+/// One transparent panel sits at the top center of one screen: the pointer's screen if it is not fullscreen,
+/// else the home screen (`NotchScreenPicker`, rules A/B). SwiftUI draws the black shape
 /// for the current `NotchPresentation`. The panel takes mouse events only while the pointer is inside
 /// that shape; everything else passes through. `NotchMachine` (MeleteCore) holds the rules.
 @MainActor
@@ -15,6 +16,10 @@ final class NotchController {
     private var vm: NotchViewModel!
     private var screenID: CGDirectDisplayID?
     private var fullscreen: [CGDirectDisplayID: Bool] = [:]
+    /// Cached per screen on space / screen / app changes, so a pointer move does only lookups.
+    private var layouts: [CGDirectDisplayID: NotchLayout] = [:]
+    private var screenInfos: [NotchScreenInfo] = []
+    private var picker = NotchScreenPicker()
     private var timers: [NotchTimerKind: DispatchWorkItem] = [:]
     private var lastPointer = NSPoint.zero
     private var observers: [NSObjectProtocol] = []
@@ -28,10 +33,11 @@ final class NotchController {
 
     /// Create the panel, start screen/hover/fullscreen tracking. In DEBUG, honor MELETE_DEBUG_STATE.
     func start() {
-        let screen = pointerScreen() ?? NSScreen.main ?? NSScreen.screens[0]
+        refreshScreens()
+        let screen = pickScreen(at: NSEvent.mouseLocation, pinned: false).flatMap(screen(withID:))
+            ?? NSScreen.main ?? NSScreen.screens[0]
         screenID = screen.displayID
         let layout = layoutFor(screen)
-        refreshFullscreen()
         let machine = NotchMachine(status: NotchEngineStatus(state: model.engine.state, phase: model.engine.phase),
                                    hasNotch: layout.hasNotch, fullscreen: isFullscreen(screen),
                                    timings: NotchTimings(hoverZoneDwell: Mono.hoverZoneDwell,
@@ -65,7 +71,10 @@ final class NotchController {
     func showFullPanel(firstRun: Bool) {
         // A debug state wins over the app's first-run call (debug runs never mark the first run done).
         if firstRun, let state = debug.state, state != "firstRun" { return }
-        if vm.machine.expansion != .full, let s = pointerScreen() { moveTo(s) }
+        // Opens on the pointer's screen, or on the home screen when the pointer's screen is fullscreen.
+        if vm.machine.expansion != .full, let s = pickScreen(at: NSEvent.mouseLocation, pinned: false).flatMap(screen(withID:)) {
+            moveTo(s)
+        }
         send(.openFull(firstRun: firstRun))
     }
 
@@ -142,7 +151,8 @@ final class NotchController {
     private func pointerMoved(_ p: NSPoint) {
         lastPointer = p
         guard !debug.pinned else { return }
-        if canFollowPointer, let s = NSScreen.containing(p), s.displayID != screenID {
+        if debug.screenPin == nil, let id = pickScreen(at: p, pinned: !vm.machine.followsPointerScreen),
+           id != screenID, let s = screen(withID: id) {
             moveTo(s)
         }
         let inPanel: CGPoint? = vm.machine.expansion == .full && contains(panel.frame, p)
@@ -157,16 +167,15 @@ final class NotchController {
         }
     }
 
-    /// Stay on the screen while the user works in an open panel.
-    private var canFollowPointer: Bool {
-        debug.screenPin == nil && vm.machine.followsPointerScreen
-    }
-
+    /// Rule C: the choices open on the pointer's screen, also when it is fullscreen (the user looks there).
+    /// After the choice the picker brings the panel back to the home screen.
     private func sessionReachedZero(_ phase: Phase) {
+        refreshScreens()
         if vm.machine.expansion != .full, debug.screenPin == nil, let s = NSScreen.containing(NSEvent.mouseLocation) {
-            refreshFullscreen()
             moveTo(s)
         }
+        // The panel may already be on that screen: the machine needs the fresh fullscreen flag for the deadline.
+        syncFullscreenFlag()
         send(.sessionReachedZero(phase))
         // The choices shape is larger than the collapsed one: the pointer may be inside it without a move.
         recheckPointer()
@@ -174,9 +183,22 @@ final class NotchController {
 
     // MARK: Screens
 
-    private func pointerScreen() -> NSScreen? {
-        if let pin = debug.screenPin { return pin() }
-        return NSScreen.containing(NSEvent.mouseLocation)
+    /// The screen the panel should be on (rules A/B). `pinned`: the machine keeps the panel where it is.
+    /// Per pointer move: dictionary / array lookups only, no fullscreen check.
+    private func pickScreen(at p: NSPoint, pinned: Bool) -> CGDirectDisplayID? {
+        if let pin = debug.screenPin { return pin()?.displayID }
+        let ptr = NSScreen.containing(p)
+        var inHotZone = false
+        if let ptr, isFullscreen(ptr), let l = layouts[ptr.displayID] {
+            let idle = vm?.machine.status.isIdle ?? (model.engine.state == .idle)
+            inHotZone = contains(l.hotZone(idle: idle), p)
+        }
+        return picker.target(screens: screenInfos, pointer: ptr?.displayID, pointerInHotZone: inHotZone,
+                             current: screenID, pinned: pinned)
+    }
+
+    private func screen(withID id: CGDirectDisplayID) -> NSScreen? {
+        NSScreen.screens.first { $0.displayID == id }
     }
 
     private func layoutFor(_ s: NSScreen) -> NotchLayout {
@@ -198,23 +220,43 @@ final class NotchController {
     }
 
     private func isFullscreen(_ s: NSScreen) -> Bool {
-        if debug.ignoreFullscreen { return false }
+        if let forced = debug.forceFullscreen { return forced(s) }
         return fullscreen[s.displayID] ?? false
     }
 
-    private func refreshFullscreen() {
-        for s in NSScreen.screens { fullscreen[s.displayID] = FullscreenDetector.isFullscreen(s) }
+    /// Fullscreen flags, layouts and picker input for every screen. Space / app / screen changes only.
+    private func refreshScreens() {
+        let screens = NSScreen.screens
+        fullscreen = [:]; layouts = [:]
+        for s in screens {
+            fullscreen[s.displayID] = FullscreenDetector.isFullscreen(s)
+            layouts[s.displayID] = layoutFor(s)
+        }
+        screenInfos = screens.map {
+            NotchScreenInfo(id: $0.displayID, fullscreen: isFullscreen($0),
+                            builtIn: CGDisplayIsBuiltin($0.displayID) != 0 || $0.safeAreaInsets.top > 0)
+        }
+        NotchLog.log("screens " + screens.map { "\($0.localizedName) fs=\(isFullscreen($0))" }.joined(separator: ", "))
     }
 
-    /// Fullscreen is checked on space / app / screen changes only (never on mouse moves).
-    private func fullscreenMayHaveChanged() {
-        refreshFullscreen()
-        guard let vm, let s = NSScreen.screens.first(where: { $0.displayID == screenID }) else { return }
+    /// Tell the machine when the fullscreen flag of the panel's own screen changed (also while pinned:
+    /// auto choices on a screen that becomes fullscreen lose their deadline).
+    private func syncFullscreenFlag() {
+        guard let vm, let id = screenID, let s = screen(withID: id) else { return }
         let fs = isFullscreen(s)
         if fs != vm.machine.fullscreen {
             NotchLog.log("fullscreen \(s.localizedName) = \(fs)")
             send(.screen(hasNotch: vm.layout.hasNotch, fullscreen: fs))
         }
+    }
+
+    /// Fullscreen is checked on space / app / screen changes only (never on mouse moves).
+    /// Then re-pick the screen: the home screen may be fullscreen now, or the pointer's screen may not be.
+    private func fullscreenMayHaveChanged() {
+        guard vm != nil else { return }
+        refreshScreens()
+        syncFullscreenFlag()
+        recheckPointer()
     }
 
     private func observeSystem() {
@@ -233,10 +275,16 @@ final class NotchController {
         ) { [weak self] _ in
             MainActor.assumeIsolated {
                 guard let self else { return }
-                self.refreshFullscreen()
-                let s = self.pointerScreen() ?? NSScreen.main
-                self.screenID = nil
-                if let s { self.moveTo(s) }
+                self.refreshScreens()
+                // The picker re-picks when the panel's (or the home) screen is gone, even while pinned.
+                // `moveTo` also applies a new layout of the same screen.
+                let pinned = !self.vm.machine.followsPointerScreen
+                if let id = self.pickScreen(at: NSEvent.mouseLocation, pinned: pinned) ?? NSScreen.main?.displayID,
+                   let s = self.screen(withID: id) {
+                    self.moveTo(s)
+                }
+                self.syncFullscreenFlag()
+                self.recheckPointer()
             }
         })
     }
@@ -265,6 +313,7 @@ final class NotchController {
 /// - MELETE_DEBUG_STATE: idle, idleHover, running, break, paused, done, peek, full, focusEnd, breakEnd, noNotch, firstRun
 /// - MELETE_DEBUG_SCREEN=builtin|external: pin the notch to a screen.
 /// - MELETE_DEBUG_NO_FULLSCREEN=1: ignore fullscreen (for screenshots over a fullscreen app).
+/// - MELETE_DEBUG_FULLSCREEN=builtin|external: treat only that screen as fullscreen (home-screen checks).
 /// - MELETE_DEBUG_SEED=1: show sample tasks from an in-memory store (the real store is not touched).
 /// - MELETE_DEBUG_SECONDS=N: every session lasts N seconds, and sessions are not logged to the store.
 ///   With it, the running and peek states start a real focus session (it reaches 0:00 after N seconds).
@@ -273,7 +322,8 @@ final class NotchController {
 private struct DebugOptions {
     var state: String?
     var screenPin: (() -> NSScreen?)?
-    var ignoreFullscreen = false
+    /// Replaces the real fullscreen check (MELETE_DEBUG_NO_FULLSCREEN, MELETE_DEBUG_FULLSCREEN).
+    var forceFullscreen: ((NSScreen) -> Bool)?
     var forceNoNotch = false
     var keepFirstRun = false
     var taskStore: MeleteStore?
@@ -290,7 +340,11 @@ private struct DebugOptions {
         case "external": screenPin = { NSScreen.screens.first { $0.safeAreaInsets.top == 0 } ?? NSScreen.main }
         default: break
         }
-        ignoreFullscreen = env["MELETE_DEBUG_NO_FULLSCREEN"] == "1"
+        switch env["MELETE_DEBUG_FULLSCREEN"] {
+        case "builtin": forceFullscreen = { $0.safeAreaInsets.top > 0 }
+        case "external": forceFullscreen = { $0.safeAreaInsets.top == 0 }
+        default: if env["MELETE_DEBUG_NO_FULLSCREEN"] == "1" { forceFullscreen = { _ in false } }
+        }
         forceNoNotch = state == "noNotch"
         keepFirstRun = state != nil
         pinned = ["idleHover", "peek", "focusEnd", "breakEnd", "full", "firstRun"].contains(state ?? "")

@@ -30,6 +30,7 @@ public enum NotchExpansion: Equatable, Sendable {
     /// Session-end choices (9/10) that opened by themselves at 0:00 (from any expansion). Close after 30 s → 4b.
     /// The pointer does not cancel or change that deadline. If the pointer is inside at the deadline,
     /// the panel becomes `.hover` and closes when the pointer leaves.
+    /// On a fullscreen screen there is no deadline: the choices stay until the user chooses (user test F2).
     case choicesAuto
     /// Choices opened by a click on 4b. Close on click outside or Esc.
     case choicesPinned
@@ -138,9 +139,10 @@ public struct NotchMachine: Equatable, Sendable {
     /// The panel takes key focus only in the full panel (intention and task fields).
     public var wantsKey: Bool { expansion == .full }
 
-    /// The panel follows the pointer to another screen only while nothing is open.
-    /// When an expansion closes, the controller re-resolves the pointer screen at once.
-    public var followsPointerScreen: Bool { expansion == .none }
+    /// The panel follows the pointer to another screen only while nothing is open and no fullscreen
+    /// reveal shows (the reveal keeps its exit delay). When that ends, the controller re-resolves the
+    /// screen at once (`NotchScreenPicker`).
+    public var followsPointerScreen: Bool { expansion == .none && !revealed }
 
     @discardableResult
     public mutating func handle(_ event: NotchEvent) -> [NotchEffect] {
@@ -173,7 +175,8 @@ public struct NotchMachine: Equatable, Sendable {
             if expansion == .none { revealed = false }
 
         case .timerFired(.autoClose):
-            guard expansion == .choicesAuto else { break }
+            // A late timer in fullscreen does nothing: there the choices stay until the user chooses.
+            guard expansion == .choicesAuto, !fullscreen else { break }
             if pointerInside {
                 // The user is looking at it: close when the pointer leaves (normal exit delay).
                 expansion = .hover
@@ -204,7 +207,8 @@ public struct NotchMachine: Equatable, Sendable {
             if expansion != .none { collapse(&fx) }
 
         case let .sessionReachedZero(p):
-            // Always the choices (9/10) with the 30 s deadline, from any expansion.
+            // Always the choices (9/10), from any expansion. The 30 s deadline only off fullscreen:
+            // in fullscreen they stay until the user chooses.
             status = .awaiting(p)
             if expansion == .full { fx.append(.resignKey) } // the controller commits text edits first
             expansion = .choicesAuto
@@ -213,7 +217,7 @@ public struct NotchMachine: Equatable, Sendable {
             // A pending dwell (fullscreen hot zone) or exit timer must not change the choices.
             fx.append(.cancel(.dwell))
             fx.append(.cancel(.exit))
-            fx.append(.schedule(.autoClose, timings.autoClose))
+            fx.append(fullscreen ? .cancel(.autoClose) : .schedule(.autoClose, timings.autoClose))
 
         case let .engine(new):
             let old = status
@@ -242,6 +246,9 @@ public struct NotchMachine: Equatable, Sendable {
             // A full panel carried over from the desktop must not stay over the fullscreen app.
             // A full panel opened after a fullscreen reveal never sees this transition, so it stays.
             if entersFullscreen && expansion == .full { collapse(&fx) }
+            // Auto choices on a screen that became fullscreen: no deadline, they stay until the user chooses.
+            // Leaving fullscreen does not start a new deadline (the flag can flip back and forth on a swipe).
+            if entersFullscreen && expansion == .choicesAuto { fx.append(.cancel(.autoClose)) }
             pointerInside = false
             suppressHover = false
             if expansion == .hover { expansion = .none }
