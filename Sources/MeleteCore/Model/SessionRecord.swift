@@ -38,7 +38,7 @@ public final class SessionRecord {
     public var snapshot: SessionSnapshot {
         SessionSnapshot(id: id, phase: phase, startedAt: startedAt, endedAt: endedAt,
                         actualDuration: actualDuration, end: end, counted: counted,
-                        taskID: taskID, taskTitle: taskTitle, intention: intention)
+                        taskID: taskID, taskTitle: taskTitle, intention: intention, plannedDuration: plannedDuration)
     }
 }
 
@@ -49,6 +49,7 @@ public struct SessionSnapshot: Equatable, Sendable, Identifiable {
     public var startedAt: Date
     public var endedAt: Date
     public var actualDuration: TimeInterval
+    public var plannedDuration: TimeInterval
     public var end: SessionEnd
     public var counted: Bool
     public var taskID: UUID?
@@ -56,9 +57,11 @@ public struct SessionSnapshot: Equatable, Sendable, Identifiable {
     public var intention: String?
 
     public init(id: UUID = UUID(), phase: Phase, startedAt: Date, endedAt: Date, actualDuration: TimeInterval,
-                end: SessionEnd, counted: Bool, taskID: UUID? = nil, taskTitle: String? = nil, intention: String? = nil) {
+                end: SessionEnd, counted: Bool, taskID: UUID? = nil, taskTitle: String? = nil, intention: String? = nil,
+                plannedDuration: TimeInterval? = nil) {
         self.id = id; self.phase = phase; self.startedAt = startedAt; self.endedAt = endedAt
         self.actualDuration = actualDuration; self.end = end; self.counted = counted
+        self.plannedDuration = plannedDuration ?? actualDuration
         self.taskID = taskID; self.taskTitle = taskTitle; self.intention = intention
     }
 }

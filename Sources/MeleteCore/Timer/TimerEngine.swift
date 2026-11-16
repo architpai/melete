@@ -136,7 +136,9 @@ public final class TimerEngine {
     }
 
     public func skip() {
+        let wasActive = isActive
         reconcile()
+        if wasActive, case .awaitingChoice = state { return }
         switch state {
         case .running, .paused:
             if phase == .focus {
@@ -242,7 +244,11 @@ public final class TimerEngine {
     }
 
     private func endActiveSession(as end: SessionEnd) {
-        guard isActive, let s = session else { return }
+        guard isActive, var s = session else { return }
+        if s.phase == .focus && !s.isExtension {
+            s.taskID = currentTaskID
+            s.intention = intention
+        }
         cancelWake()
         let now = time.now
         let remaining = self.remaining(at: now)

@@ -5,12 +5,13 @@ import SwiftUI
 import MeleteCore
 
 @MainActor
-final class StatsWindowController {
+final class StatsWindowController: NSObject, NSWindowDelegate {
     private let model: AppModel
     private var window: NSWindow?
 
     init(model: AppModel) {
         self.model = model
+        super.init()
         #if DEBUG
         if ProcessInfo.processInfo.environment["MELETE_OPEN"] == "stats" {
             DispatchQueue.main.async { [weak self] in self?.show() }
@@ -25,6 +26,12 @@ final class StatsWindowController {
             w.title = "Melete Stats"
             w.minSize = NSSize(width: 620, height: 460)
             WindowStyle.configure(w)
+            w.delegate = self
+            w.contentView = nil
+            w.center()
+            window = w
+        }
+        if let w = window, w.contentView == nil {
             var store = model.store
             #if DEBUG
             if ProcessInfo.processInfo.environment["MELETE_STATS_FIXTURE"] == "1" {
@@ -32,26 +39,56 @@ final class StatsWindowController {
             }
             #endif
             w.contentView = NSHostingView(rootView: StatsView().modelContainer(store.container))
-            w.center()
-            window = w
         }
         NSApp.activate(ignoringOtherApps: true)
         window?.makeKeyAndOrderFront(nil)
+        #if DEBUG
+        if ProcessInfo.processInfo.environment["MELETE_STATS_REOPEN_CHECK"] == "1", !checkedReopen {
+            checkedReopen = true
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self, weak previousContent = window?.contentView] in
+                self?.window?.close()
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self, weak previousContent] in
+                    NSLog("Stats close check: content cleared = %@, hosting view released = %@",
+                          self?.window?.contentView == nil ? "yes" : "no", previousContent == nil ? "yes" : "no")
+                    self?.show()
+                    NSLog("Stats reopen check: content rebuilt = %@", self?.window?.contentView != nil ? "yes" : "no")
+                }
+            }
+        }
+        #endif
     }
+
+    func windowWillClose(_ notification: Notification) {
+        window?.contentView = nil
+        window?.toolbar = nil
+    }
+
+    #if DEBUG
+    private var checkedReopen = false
+    #endif
 }
 
 private struct StatsView: View {
     @Query(sort: \SessionRecord.startedAt, order: .reverse) private var records: [SessionRecord]
-    @State private var range: StatsRange = .week
+    @State private var range: StatsRange = {
+        #if DEBUG
+        if let value = ProcessInfo.processInfo.environment["MELETE_STATS_RANGE"], let range = StatsRange(rawValue: value) {
+            return range
+        }
+        #endif
+        return .week
+    }()
 
     var body: some View {
         TimelineView(.periodic(from: .now, by: 60)) { context in
             let stats = StatsCalculator(sessions: records.map(\.snapshot), now: context.date)
+            let todaySessions = stats.todaySessions
+            let todayFocus = todaySessions.filter { $0.phase == .focus }
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
                     HStack(spacing: 10) {
-                        tile("Today", value: "\(stats.todayPomodoros)", unit: "pomodoros")
-                        tile("Focus today", value: WindowStyle.duration(stats.focusSecondsToday))
+                        tile("Today", value: "\(todayFocus.filter(\.counted).count)", unit: "pomodoros")
+                        tile("Focus today", value: WindowStyle.duration(todayFocus.reduce(0) { $0 + $1.actualDuration }))
                         tile("Streak", value: "\(stats.streakDays)", unit: stats.streakDays == 1 ? "day" : "days")
                         tile("This week", value: "\(stats.last7DaysPomodoros)", unit: "pomodoros")
                     }
@@ -72,10 +109,10 @@ private struct StatsView: View {
                     }
                     VStack(spacing: 0) {
                         WindowSectionTitle(title: "Today").padding(.bottom, 8)
-                        if stats.todaySessions.isEmpty {
+                        if todaySessions.isEmpty {
                             emptyMessage("No sessions today. A fresh start awaits.")
                         } else {
-                            ForEach(stats.todaySessions) { session in
+                            ForEach(todaySessions) { session in
                                 sessionRow(session)
                             }
                         }
@@ -214,9 +251,10 @@ private struct StatsView: View {
     private func sessionDetail(_ session: SessionSnapshot) -> String {
         var detail = (session.phase == .focus ? "Focus " : "") + Mono.clock(session.actualDuration)
         if session.end != .completed { detail += " · \(session.end.rawValue)" }
-        if let record = records.first(where: { $0.id == session.id }), session.counted,
-           session.actualDuration > record.plannedDuration {
-            detail += " (+\(Mono.clock(session.actualDuration - record.plannedDuration)))"
+        if session.counted, session.actualDuration > session.plannedDuration {
+            let extra = session.actualDuration - session.plannedDuration
+            let label = extra.truncatingRemainder(dividingBy: 60) == 0 ? "\(Int(extra / 60))" : Mono.clock(extra)
+            detail += " (+\(label))"
         }
         return detail
     }

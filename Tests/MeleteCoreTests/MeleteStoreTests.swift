@@ -15,6 +15,7 @@ struct MeleteStoreTests {
         #expect(t.completedPomodoros == 1)
         #expect(store.sessions(from: .distantPast, to: .distantFuture).count == 1)
         #expect(store.sessions(from: .distantPast, to: .distantFuture).first?.actualDuration == 360)
+        #expect(store.sessions(from: .distantPast, to: .distantFuture).first?.snapshot.plannedDuration == 60)
     }
 }
 

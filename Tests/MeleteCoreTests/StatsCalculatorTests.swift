@@ -110,3 +110,38 @@ extension StatsCalculatorTests {
         #expect(c.todaySessions.count == 4)
     }
 }
+
+extension StatsCalculatorTests {
+    @Test func streakSurvivesMidnightDSTInSantiago() throws {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = try #require(TimeZone(identifier: "America/Santiago"))
+        let days = try (4...8).map { day in
+            try #require(calendar.date(from: DateComponents(year: 2026, month: 9, day: day, hour: 12)))
+        }
+        let sessions = days.map { session($0) }
+        let now = try #require(days.last)
+        #expect(StatsCalculator(sessions: sessions, now: now, calendar: calendar).streakDays == 5)
+        #expect(StatsCalculator(sessions: Array(sessions.dropLast()), now: now, calendar: calendar).streakDays == 4)
+    }
+
+    @Test func deletedTaskWithoutTitleHasFallback() {
+        let id = UUID()
+        let stats = StatsCalculator(sessions: [session(date(16), task: id), session(date(15), task: id)],
+                                    now: date(16), calendar: calendar)
+        #expect(stats.perTask(.week) == [TaskStat(taskID: id, title: "Deleted task", pomodoros: 2, focusSeconds: 200)])
+    }
+
+    @Test func perTaskSortsByCountThenFocusTimeThenStableID() {
+        let a = UUID(uuidString: "00000000-0000-0000-0000-000000000001")!
+        let b = UUID(uuidString: "00000000-0000-0000-0000-000000000002")!
+        let c = UUID(uuidString: "00000000-0000-0000-0000-000000000003")!
+        let d = UUID(uuidString: "00000000-0000-0000-0000-000000000004")!
+        let sessions = [session(date(16), seconds: 100, task: b), session(date(16), seconds: 100, task: a),
+                        session(date(16), seconds: 200, task: c), session(date(16), seconds: 10, task: d),
+                        session(date(16), seconds: 10, task: d), session(date(16), seconds: 100)]
+        for input in [sessions, Array(sessions.reversed())] {
+            let stats = StatsCalculator(sessions: input, now: date(16), calendar: calendar)
+            #expect(stats.perTask(.week).map(\.taskID) == [d, c, a, b, nil])
+        }
+    }
+}

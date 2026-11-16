@@ -5,10 +5,8 @@ import Testing
 @MainActor
 struct TimerEngineTests {
     let time = ManualTimeSource()
-    let defaults: UserDefaults = {
-        let d = UserDefaults(suiteName: "melete.tests.\(UUID().uuidString)")!
-        return d
-    }()
+    private let defaultsSuite = TestDefaults()
+    var defaults: UserDefaults { defaultsSuite.defaults }
 
     func make() -> (TimerEngine, Box) {
         let e = TimerEngine(durations: TimerDurations(focus: 100, shortBreak: 10, longBreak: 30, cycleLength: 2),
@@ -73,6 +71,7 @@ struct TimerEngineTests {
             e.select(phase); #expect(e.phase == phase)
             e.start(phase); e.select(.focus); #expect(e.phase == phase)
             e.skip(); #expect(e.phase == .focus)
+            #expect(e.state == .running(endsAt: time.now.addingTimeInterval(100), total: 100))
             #expect(box.summaries.last?.end == .skipped)
             #expect(box.summaries.last?.counted == false)
             e.stop()
@@ -298,13 +297,75 @@ extension TimerContractTests {
         #expect(box.summaries.first?.endedAt == deadline)
         #expect(engine.cyclePosition == 1)
         switch action {
-        case "pause", "reset": #expect(engine.state == .awaitingChoice(ended: .focus))
-        case "skip":
-            #expect(engine.phase == .focus)
-            #expect(engine.remaining(at: rules.time.now) == 100)
+        case "pause", "reset", "skip": #expect(engine.state == .awaitingChoice(ended: .focus))
         case "stop": #expect(engine.state == .idle)
         default: #expect(engine.phase == .shortBreak)
         }
         engine.stop()
+    }
+}
+
+extension TimerContractTests {
+    @Test(arguments: ["skip", "reset", "stop", "start"])
+    func uncountedFocusUsesSelectionAtEnd(action: String) {
+        let (engine, box) = rules.make()
+        engine.currentTaskID = UUID()
+        engine.intention = "Original"
+        engine.startFocus()
+        rules.time.advance(by: 20)
+        let selected = UUID()
+        engine.currentTaskID = selected
+        engine.intention = "Selected at end"
+        switch action {
+        case "skip": engine.skip()
+        case "reset": engine.reset()
+        case "stop": engine.stop()
+        default: engine.startFocus()
+        }
+        #expect(box.summaries.count == 1)
+        #expect(box.summaries.first?.taskID == selected)
+        #expect(box.summaries.first?.intention == "Selected at end")
+        #expect(box.summaries.first?.actualDuration == 20)
+        #expect(box.summaries.first?.counted == false)
+        engine.stop()
+    }
+
+    @Test func extensionKeepsIntentionOnlyCreditAfterTaskCleared() throws {
+        let (engine, box) = rules.make()
+        let store = try MeleteStore(inMemory: true)
+        let task = store.addTask(title: "Original task")
+        engine.currentTaskID = task.id
+        engine.startFocus()
+        engine.currentTaskID = nil
+        engine.intention = "One-off focus"
+        rules.time.advance(by: 100)
+        engine.reconcile()
+        store.record(try #require(box.summaries.last))
+        engine.currentTaskID = task.id
+        engine.intention = "Later selection"
+        engine.extendFiveMinutes()
+        rules.time.advance(by: 300)
+        engine.reconcile()
+        store.record(try #require(box.summaries.last))
+        let sessions = store.sessions(from: .distantPast, to: .distantFuture)
+        #expect(sessions.count == 1)
+        #expect(sessions.first?.taskID == nil)
+        #expect(sessions.first?.intention == "One-off focus")
+        #expect(sessions.first?.actualDuration == 400)
+        #expect(task.completedPomodoros == 0)
+        let groups = StatsCalculator(sessions: sessions.map(\.snapshot), now: rules.time.now).perTask(.week)
+        #expect(groups.map(\.title) == ["Intentions only"])
+        #expect(groups.first?.pomodoros == 1)
+    }
+
+    @Test(arguments: [Phase.shortBreak, .longBreak])
+    func skipAtBreakDeadlineKeepsChoices(phase: Phase) {
+        let (engine, box) = rules.make()
+        engine.start(phase)
+        rules.time.advance(by: engine.durations.duration(of: phase))
+        engine.skip()
+        #expect(engine.state == .awaitingChoice(ended: phase))
+        #expect(box.summaries.count == 1)
+        #expect(box.summaries.first?.end == .completed)
     }
 }

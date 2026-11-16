@@ -63,11 +63,14 @@ public struct StatsCalculator: Sendable {
     public var todayPomodoros: Int { count(todaySessions) }
     public var focusSecondsToday: TimeInterval { focus(todaySessions) }
     public var streakDays: Int {
+        func previousDay(_ day: Date) -> Date {
+            calendar.startOfDay(for: offset(-1, .day, from: day))
+        }
         let days = Set(sessions.filter { $0.phase == .focus && $0.counted }
             .map { calendar.startOfDay(for: $0.startedAt) })
-        var day = days.contains(today) ? today : offset(-1, .day, from: today)
+        var day = days.contains(today) ? today : previousDay(today)
         var streak = 0
-        while days.contains(day) { streak += 1; day = offset(-1, .day, from: day) }
+        while days.contains(day) { streak += 1; day = previousDay(day) }
         return streak
     }
     public var last7DaysPomodoros: Int { perDay(.week).reduce(0) { $0 + $1.pomodoros } }
