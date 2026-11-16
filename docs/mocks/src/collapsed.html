@@ -1,0 +1,44 @@
+<section class="sec"><h2>Idle</h2>
+ <div class="row2">
+  <div class="item"><div class="cap"><span class="chip">1</span>Idle<span class="sub">Normal notch. No timer.</span></div>
+   <div class="scene" style="--h:72px">{{MB}}<div class="island"><div class="cam"></div></div></div></div>
+  <div class="item"><div class="cap"><span class="chip">2</span>Idle + hover<span class="sub">Hover shows Start.</span></div>
+   <div class="scene" style="--h:72px">{{MB}}<div class="island sym" style="--w:250px;--ih:62px;--r:18px"><div class="cam"></div>
+    <div class="xc" style="--top:31px;flex-direction:row;align-items:center;justify-content:center;gap:10px"><span class="btn pri">{{play}}Start focus</span><span class="small ink2">25:00</span></div></div></div></div>
+ </div>
+</section>
+
+<section class="sec"><h2>Running, collapsed: B chosen</h2>
+ <div class="item"><div class="cap"><span class="chip">A</span>Right wing<span class="sub">Time at right, bar under the notch. Adds 64 pt at the right only.</span></div>
+  <div class="scene" style="--h:60px">{{MB}}<div class="island" style="--rw:64px;--ih:36px"><div class="cam"></div><div class="wr">18:42</div><div class="bar"><i style="--p:25%"></i></div></div></div></div>
+ <div class="item"><div class="cap"><span class="chip">B ✓</span>Two wings<span class="sub">Chosen. Dots = cycle to long break. Time at right, bar under. 64 pt at each side, same width in every state.</span></div>
+  <div class="scene" style="--h:60px">{{MB}}<div class="island" style="--lw:64px;--rw:64px;--ih:36px"><div class="cam"></div><div class="wl"><span class="dots"><i class="on"></i><i class="on"></i><i></i><i></i></span></div><div class="wr">18:42</div><div class="bar"><i style="--p:25%"></i></div></div></div></div>
+ <div class="item"><div class="cap"><span class="chip">C</span>Ring<span class="sub">Progress ring at left, time at right. No bar. Notch height stays the same.</span></div>
+  <div class="scene" style="--h:60px">{{MB}}<div class="island" style="--lw:38px;--rw:56px"><div class="cam"></div><div class="wl"><span class="ring" style="--p:25%"></span></div><div class="wr">18:42</div></div></div></div>
+</section>
+
+<section class="sec"><h2>Other states (look B)</h2>
+ <div class="row2">
+  <div class="item"><div class="cap"><span class="chip">3</span>Break<span class="sub">Cup icon, dim time, dashed bar.</span></div>
+   <div class="scene" style="--h:60px">{{MB}}<div class="island" style="--lw:64px;--rw:64px;--ih:36px"><div class="cam"></div><div class="wl"><span class="dots"><i class="on"></i><i class="on"></i><i></i><i></i></span></div><div class="wr ink2">{{cup}}3:12</div><div class="bar dash"><i style="--p:36%"></i></div></div></div></div>
+  <div class="item"><div class="cap"><span class="chip">4</span>Paused<span class="sub">Pause icon. Time blinks slowly.</span></div>
+   <div class="scene" style="--h:60px">{{MB}}<div class="island" style="--lw:64px;--rw:64px;--ih:36px"><div class="cam"></div><div class="wl"><span class="dots"><i class="on"></i><i></i><i></i><i></i></span></div><div class="wr">{{pause}}<span class="blink">18:42</span></div><div class="bar dim"><i style="--p:25%"></i></div></div></div></div>
+ </div>
+ <div class="row2">
+  <div class="item"><div class="cap"><span class="chip">4b</span>Done, no answer<span class="sub">Panel closed after 30 s. "Done" blinks.</span></div>
+   <div class="scene" style="--h:60px">{{MB}}<div class="island" style="--lw:64px;--rw:64px;--ih:36px"><div class="cam"></div><div class="wl"><span class="dots"><i class="on"></i><i class="on"></i><i class="on"></i><i></i></span></div><div class="wr"><span class="blink">Done</span></div><div class="bar"><i style="--p:100%"></i></div></div></div></div>
+  <div class="item"><div class="cap"><span class="chip">4c</span>Fullscreen + hover<span class="sub">Hover top center 1 s. Hides when you leave.</span></div>
+   <div class="scene full" style="--h:60px"><div class="video" style="inset:0"></div><div class="island" style="--lw:64px;--rw:64px;--ih:36px"><div class="cam"></div><div class="wl"><span class="dots"><i class="on"></i><i></i><i></i><i></i></span></div><div class="wr">18:42</div><div class="bar"><i style="--p:25%"></i></div></div></div></div>
+ </div>
+</section>
+
+<section class="sec"><h2>Screens without a notch (external monitor)</h2>
+ <div class="item"><div class="cap"><span class="chip">5</span>Running pill<span class="sub">A small black tab at the top center. Same hover and click as the notch.</span></div>
+  <div class="scene" style="--h:60px">{{MBF}}<div class="island sym" style="--w:104px;--ih:28px;--r:10px"><div style="position:absolute;inset:0 0 6px 0;display:flex;align-items:center;justify-content:center;gap:6px;font-size:12.5px;font-weight:600;font-variant-numeric:tabular-nums">18:42</div><div class="bar" style="left:12px;right:12px;bottom:4px"><i style="--p:25%"></i></div></div></div></div>
+ <div class="row2">
+  <div class="item"><div class="cap"><span class="chip">6-I ✓</span>Idle: hover zone<span class="sub">Chosen.</span></div>
+   <div class="scene" style="--h:60px">{{MBF2}}<div class="zone">invisible hover zone</div></div></div>
+  <div class="item"><div class="cap"><span class="chip">6-II</span>Idle: small tab<span class="sub">Thin black tab.</span></div>
+   <div class="scene" style="--h:60px">{{MBF2}}<div class="island sym" style="--w:64px;--ih:7px;--r:5px"></div></div></div>
+ </div>
+</section>

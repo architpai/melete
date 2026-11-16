@@ -5,3 +5,7 @@ DerivedData/
 xcuserdata/
 node_modules/
 dist/
+.board/
+.build/
+.swiftpm/
+*.xcodeproj

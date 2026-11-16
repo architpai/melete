@@ -1,0 +1,265 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Melete mocks</title><style>*{box-sizing:border-box}
+.page{display:flex;flex-direction:column;gap:22px;padding:4px 0 8px}
+.sec{display:flex;flex-direction:column;gap:10px}
+.sec>h2{margin:0;font:600 11px/1 var(--font-sans);letter-spacing:.08em;text-transform:uppercase;color:var(--muted-foreground)}
+.item{display:flex;flex-direction:column;gap:6px}
+.cap{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;font:600 13px/1.3 var(--font-sans);color:var(--foreground)}
+.cap .chip{font:600 11px/1 var(--font-mono);padding:3px 7px;border:1px solid var(--border);border-radius:999px;color:var(--foreground)}
+.cap .sub{font-weight:400;font-size:12px;color:var(--muted-foreground)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:560px){.row2{grid-template-columns:1fr}}
+
+/* scene = cropped desktop, fixed mac colors (device pixels, not theme) */
+.scene{position:relative;height:var(--h,72px);border-radius:var(--radius);overflow:hidden;
+  background:radial-gradient(120% 140% at 20% 0%,#55555c 0%,#2a2a2f 45%,#151517 100%);
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",system-ui,sans-serif;color:#f5f5f7;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.06)}
+.scene.full{background:#050505}
+.menubar{position:absolute;inset:0 0 auto 0;height:32px;background:rgba(0,0,0,.22);font-size:13px;color:rgba(255,255,255,.92)}
+.mb-left{position:absolute;top:0;height:32px;right:calc(50% + 160px);display:flex;align-items:center;gap:17px;white-space:nowrap}
+.mb-left b{font-weight:700}
+.mb-right{position:absolute;top:0;height:32px;left:calc(50% + 168px);display:flex;align-items:center;gap:14px;white-space:nowrap}
+.mb-right svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+/* non-notch menu bar */
+.menubar.flat{height:24px;font-size:13px}
+.menubar.flat .mb-left{height:24px;right:auto;left:14px}
+.menubar.flat .mb-right{height:24px;left:auto;right:14px}
+
+/* island = notch + what grows out of it */
+.island{position:absolute;top:0;z-index:2;background:#000;color:#f5f5f7;
+  left:calc(50% - 92.5px - var(--lw,0px));width:calc(185px + var(--lw,0px) + var(--rw,0px));
+  height:var(--ih,32px);border-radius:0 0 var(--r,11px) var(--r,11px)}
+.island.sym{left:calc(50% - var(--w)/2);width:var(--w)}
+.island::before,.island::after{content:"";position:absolute;top:0;width:9px;height:9px}
+.island::before{left:-9px;background:radial-gradient(circle at 0 100%,transparent 8.5px,#000 9px)}
+.island::after{right:-9px;background:radial-gradient(circle at 100% 100%,transparent 8.5px,#000 9px)}
+.cam{position:absolute;top:13px;left:50%;width:7px;height:7px;margin-left:-3.5px;border-radius:50%;background:#0d0d14;box-shadow:inset 0 0 0 1.5px #16161f}
+.wl,.wr{position:absolute;top:0;height:32px;display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
+.wl{left:0;width:var(--lw);justify-content:center;padding-left:6px}
+.wr{right:0;width:var(--rw);justify-content:center;padding-right:6px}
+.island.sym .wl{width:var(--side)}.island.sym .wr{width:var(--side)}
+.bar{position:absolute;left:14px;right:14px;bottom:4px;height:2px;border-radius:2px;background:rgba(255,255,255,.18);overflow:hidden}
+.bar>i{display:block;height:100%;width:var(--p);background:#fff;border-radius:2px}
+.bar.dash>i{background:repeating-linear-gradient(90deg,#fff 0 4px,transparent 4px 7px)}
+.bar.dim>i{background:rgba(255,255,255,.45)}
+.ring{width:14px;height:14px;border-radius:50%;background:conic-gradient(#fff var(--p),rgba(255,255,255,.2) 0);-webkit-mask:radial-gradient(circle,transparent 4.2px,#000 4.6px);mask:radial-gradient(circle,transparent 4.2px,#000 4.6px)}
+.dots{display:inline-flex;gap:3px}.dots i{width:5px;height:5px;border-radius:50%;background:rgba(255,255,255,.28)}.dots i.on{background:#fff}
+.g{width:12px;height:12px;fill:currentColor}
+.ink2{color:rgba(245,245,247,.6)}.ink3{color:rgba(245,245,247,.35)}
+.blink{animation:blink 1.6s steps(2,start) infinite}@keyframes blink{50%{opacity:.25}}
+@media (prefers-reduced-motion:reduce){.blink{animation:none;opacity:.5}}
+
+/* expanded content */
+.xc{position:absolute;left:18px;right:18px;top:var(--top,40px);bottom:14px;display:flex;flex-direction:column;gap:10px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:28px;padding:0 12px;border-radius:999px;font-size:12.5px;font-weight:600;background:rgba(255,255,255,.12);color:#f5f5f7;white-space:nowrap}
+.btn.pri{background:#f5f5f7;color:#000}
+.btn.ic{width:30px;height:30px;padding:0}
+.btn svg{width:12px;height:12px;fill:currentColor}
+.btn svg.s{fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.big{font-size:30px;font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:-.02em;line-height:1}
+.huge{font-size:46px;font-weight:300;font-variant-numeric:tabular-nums;letter-spacing:-.03em;line-height:1}
+.small{font-size:11.5px}
+.seg{display:inline-flex;padding:2px;border-radius:999px;background:rgba(255,255,255,.08);font-size:11.5px;font-weight:600}
+.seg span{padding:4px 10px;border-radius:999px;color:rgba(245,245,247,.6)}.seg span.on{background:rgba(255,255,255,.18);color:#fff}
+.field{height:30px;border-radius:9px;background:rgba(255,255,255,.07);box-shadow:inset 0 0 0 1px rgba(255,255,255,.08);display:flex;align-items:center;padding:0 10px;font-size:12.5px;color:rgba(245,245,247,.38)}
+.task{display:flex;align-items:center;gap:9px;height:30px;padding:0 9px;border-radius:8px;font-size:12.5px}
+.task.on{background:rgba(255,255,255,.09)}
+.task .rad{width:13px;height:13px;border-radius:50%;box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.5)}
+.task.on .rad{box-shadow:inset 0 0 0 4px #fff}
+.task .n{flex:1}.task .c{font-variant-numeric:tabular-nums;color:rgba(245,245,247,.55);font-size:11.5px}
+.task.done .n{text-decoration:line-through;color:rgba(245,245,247,.4)}
+.hr{height:1px;background:rgba(255,255,255,.09)}
+.ico{width:16px;height:16px;fill:none;stroke:#f5f5f7;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;opacity:.8}
+.zone{position:absolute;top:0;left:50%;transform:translateX(-50%);width:200px;height:24px;border:1px dashed rgba(255,255,255,.45);border-top:none;border-radius:0 0 10px 10px;display:flex;align-items:center;justify-content:center;font-size:10.5px;color:rgba(255,255,255,.6)}
+.note{position:absolute;font-size:11px;color:rgba(255,255,255,.55);white-space:nowrap}
+.video{position:absolute;inset:32px 0 0 0;background:linear-gradient(180deg,#1b1f26,#0b0c0f);display:flex;align-items:flex-end;padding:14px;font-size:11px;color:rgba(255,255,255,.4)}
+
+/* app windows */
+.win{border-radius:12px;overflow:hidden;background:#1e1e20;color:#f5f5f7;box-shadow:0 0 0 1px rgba(255,255,255,.1),0 12px 30px rgba(0,0,0,.35);
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",system-ui,sans-serif;font-size:13px}
+.tb{height:44px;display:flex;align-items:center;gap:12px;padding:0 14px;background:#28282b;border-bottom:1px solid rgba(255,255,255,.07)}
+.tl{display:flex;gap:8px}.tl i{width:12px;height:12px;border-radius:50%;background:#48484c}
+.tb .t{font-weight:600;font-size:13px}.tb .sp{flex:1}
+.wb{padding:18px}
+.tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+@media (max-width:560px){.tiles{grid-template-columns:repeat(2,1fr)}}
+.tile{background:rgba(255,255,255,.05);border-radius:10px;padding:12px}
+.tile .k{font-size:11px;color:rgba(245,245,247,.55)}.tile .v{font-size:22px;font-weight:600;margin-top:4px;font-variant-numeric:tabular-nums}
+.tile .v small{font-size:12px;font-weight:500;color:rgba(245,245,247,.55)}
+.chart{display:flex;align-items:flex-end;gap:12px;height:130px;padding:0 4px;border-bottom:1px solid rgba(255,255,255,.12)}
+.chart div{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:5px;height:100%}
+.chart b{display:block;width:100%;max-width:38px;border-radius:4px 4px 0 0;background:rgba(255,255,255,.35)}
+.chart div.today b{background:#f5f5f7}
+.chart span{font-size:10.5px;color:rgba(245,245,247,.6);font-variant-numeric:tabular-nums}
+.xl{display:flex;gap:12px;padding:5px 4px 0}.xl span{flex:1;text-align:center;font-size:10.5px;color:rgba(245,245,247,.5)}
+.h3{font-size:12px;font-weight:600;color:rgba(245,245,247,.7);margin:18px 0 8px}
+.bt{display:grid;grid-template-columns:130px 1fr 96px;gap:10px;align-items:center;font-size:12px;padding:4px 0}
+.bt .tr{height:6px;border-radius:3px;background:rgba(255,255,255,.08)}.bt .tr i{display:block;height:100%;border-radius:3px;background:#f5f5f7}
+.bt .r{text-align:right;white-space:nowrap;color:rgba(245,245,247,.6);font-variant-numeric:tabular-nums}
+.tbl{width:100%;border-collapse:collapse;font-size:12px}
+.tbl td{padding:6px 4px;border-top:1px solid rgba(255,255,255,.07)}
+.tbl td:first-child{color:rgba(245,245,247,.55);font-variant-numeric:tabular-nums;width:70px}
+.tbl td.r{text-align:right;color:rgba(245,245,247,.6);font-variant-numeric:tabular-nums}
+.pill{display:inline-flex;align-items:center;height:24px;padding:0 10px;border-radius:7px;background:rgba(255,255,255,.1);font-size:12px;font-weight:500}
+.form{display:grid;grid-template-columns:150px 1fr;gap:0;font-size:13px}
+.fs{grid-column:1/-1;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:rgba(245,245,247,.5);padding:16px 0 6px}
+.fs:first-child{padding-top:0}
+.fl,.fv{padding:7px 0;border-top:1px solid rgba(255,255,255,.07);display:flex;align-items:center;gap:8px}
+.fl{color:rgba(245,245,247,.75)}
+.step{display:inline-flex;align-items:center;border-radius:7px;background:rgba(255,255,255,.1);height:24px}
+.step span{padding:0 10px;font-variant-numeric:tabular-nums}.step i{font-style:normal;width:22px;text-align:center;color:rgba(245,245,247,.6);border-left:1px solid rgba(255,255,255,.1)}
+.sw{width:32px;height:19px;border-radius:999px;background:#f5f5f7;position:relative}.sw::after{content:"";position:absolute;top:2px;right:2px;width:15px;height:15px;border-radius:50%;background:#000}
+.sw.off{background:rgba(255,255,255,.18)}.sw.off::after{right:auto;left:2px;background:#f5f5f7}
+.sl{width:140px;height:4px;border-radius:2px;background:rgba(255,255,255,.15);position:relative}.sl i{position:absolute;left:0;top:0;bottom:0;width:60%;background:#f5f5f7;border-radius:2px}.sl b{position:absolute;left:60%;top:50%;width:14px;height:14px;margin:-7px;border-radius:50%;background:#f5f5f7}
+.q{display:inline-block;font:600 10px/1 var(--font-mono, monospace);padding:3px 6px;border-radius:5px;background:#f5f5f7;color:#000}
+.wf{display:flex;align-items:center;gap:10px;padding:12px 18px;border-top:1px solid rgba(255,255,255,.07);background:#232326;font-size:11.5px;color:rgba(245,245,247,.5)}
+</style></head><body><div class="page"><section class="sec"><h2>Idle</h2>
+ <div class="row2">
+  <div class="item"><div class="cap"><span class="chip">1</span>Idle<span class="sub">Normal notch. No timer.</span></div>
+   <div class="scene" style="--h:72px"><div class="menubar"><div class="mb-left"><b>Xcode</b><span>File</span><span>Edit</span><span>View</span><span>Find</span><span>Navigate</span><span>Editor</span><span>Product</span><span>Debug</span><span>Window</span><span>Help</span></div><div class="mb-right"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect x="2" y="3" width="12" height="4.2" rx="2.1"/><rect x="2" y="8.8" width="12" height="4.2" rx="2.1"/></svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path d="M1.8 6.3a9 9 0 0 1 12.4 0M4 8.6a6 6 0 0 1 8 0M6.2 10.9a3 3 0 0 1 3.6 0"/><circle cx="8" cy="13" r=".6" fill="currentColor"/></svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" style="width:22px"><rect x=".8" y="4.3" width="12.4" height="7.4" rx="2"/><rect x="2.3" y="5.8" width="8" height="4.4" rx="1" fill="currentColor" stroke="none"/><path d="M14.6 7v2"/></svg><span>Mon 16 Nov 10:42</span></div></div><div class="island"><div class="cam"></div></div></div></div>
+  <div class="item"><div class="cap"><span class="chip">2</span>Idle + hover<span class="sub">Hover shows Start.</span></div>
+   <div class="scene" style="--h:72px"><div class="menubar"><div class="mb-left"><b>Xcode</b><span>File</span><span>Edit</span><span>View</span><span>Find</span><span>Navigate</span><span>Editor</span><span>Product</span><span>Debug</span><span>Window</span><span>Help</span></div><div class="mb-right"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect x="2" y="3" width="12" height="4.2" rx="2.1"/><rect x="2" y="8.8" width="12" height="4.2" rx="2.1"/></svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path d="M1.8 6.3a9 9 0 0 1 12.4 0M4 8.6a6 6 0 0 1 8 0M6.2 10.9a3 3 0 0 1 3.6 0"/><circle cx="8" cy="13" r=".6" fill="currentColor"/></svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" style="width:22px"><rect x=".8" y="4.3" width="12.4" height="7.4" rx="2"/><rect x="2.3" y="5.8" width="8" height="4.4" rx="1" fill="currentColor" stroke="none"/><path d="M14.6 7v2"/></svg><span>Mon 16 Nov 10:42</span></div></div><div class="island sym" style="--w:250px;--ih:62px;--r:18px"><div class="cam"></div>
+    <div class="xc" style="--top:31px;flex-direction:row;align-items:center;justify-content:center;gap:10px"><span class="btn pri"><svg class="g" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path d="M5 3.2v9.6l7.5-4.8z"/></svg>Start focus</span><span class="small ink2">25:00</span></div></div></div></div>
+ </div>
+</section>
+
+<section class="sec"><h2>Running, collapsed: B chosen</h2>
+ <div class="item"><div class="cap"><span class="chip">A</span>Right wing<span class="sub">Time at right, bar under the notch. Adds 64 pt at the right only.</span></div>
+  <div class="scene" style="--h:60px"><div class="menubar"><div class="mb-left"><b>Xcode</b><span>File</span><span>Edit</span><span>View</span><span>Find</span><span>Navigate</span><span>Editor</span><span>Product</span><span>Debug</span><span>Window</span><span>Help</span></div><div class="mb-right"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect x="2" y="3" width="12" height="4.2" rx="2.1"/><rect x="2" y="8.8" width="12" height="4.2" rx="2.1"/></svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path d="M1.8 6.3a9 9 0 0 1 12.4 0M4 8.6a6 6 0 0 1 8 0M6.2 10.9a3 3 0 0 1 3.6 0"/><circle cx="8" cy="13" r=".6" fill="currentColor"/></svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" style="width:22px"><rect x=".8" y="4.3" width="12.4" height="7.4" rx="2"/><rect x="2.3" y="5.8" width="8" height="4.4" rx="1" fill="currentColor" stroke="none"/><path d="M14.6 7v2"/></svg><span>Mon 16 Nov 10:42</span></div></div><div class="island" style="--rw:64px;--ih:36px"><div class="cam"></div><div class="wr">18:42</div><div class="bar"><i style="--p:25%"></i></div></div></div></div>
+ <div class="item"><div class="cap"><span class="chip">B ✓</span>Two wings<span class="sub">Chosen. Dots = cycle to long break. Time at right, bar under. 64 pt at each side, same width in every state.</span></div>
+  <div class="scene" style="--h:60px"><div class="menubar"><div class="mb-left"><b>Xcode</b><span>File</span><span>Edit</span><span>View</span><span>Find</span><span>Navigate</span><span>Editor</span><span>Product</span><span>Debug</span><span>Window</span><span>Help</span></div><div class="mb-right"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect x="2" y="3" width="12" height="4.2" rx="2.1"/><rect x="2" y="8.8" width="12" height="4.2" rx="2.1"/></svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path d="M1.8 6.3a9 9 0 0 1 12.4 0M4 8.6a6 6 0 0 1 8 0M6.2 10.9a3 3 0 0 1 3.6 0"/><circle cx="8" cy="13" r=".6" fill="currentColor"/></svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" style="width:22px"><rect x=".8" y="4.3" width="12.4" height="7.4" rx="2"/><rect x="2.3" y="5.8" width="8" height="4.4" rx="1" fill="currentColor" stroke="none"/><path d="M14.6 7v2"/></svg><span>Mon 16 Nov 10:42</span></div></div><div class="island" style="--lw:64px;--rw:64px;--ih:36px"><div class="cam"></div><div class="wl"><span class="dots"><i class="on"></i><i class="on"></i><i></i><i></i></span></div><div class="wr">18:42</div><div class="bar"><i style="--p:25%"></i></div></div></div></div>
+ <div class="item"><div class="cap"><span class="chip">C</span>Ring<span class="sub">Progress ring at left, time at right. No bar. Notch height stays the same.</span></div>
+  <div class="scene" style="--h:60px"><div class="menubar"><div class="mb-left"><b>Xcode</b><span>File</span><span>Edit</span><span>View</span><span>Find</span><span>Navigate</span><span>Editor</span><span>Product</span><span>Debug</span><span>Window</span><span>Help</span></div><div class="mb-right"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect x="2" y="3" width="12" height="4.2" rx="2.1"/><rect x="2" y="8.8" width="12" height="4.2" rx="2.1"/></svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path d="M1.8 6.3a9 9 0 0 1 12.4 0M4 8.6a6 6 0 0 1 8 0M6.2 10.9a3 3 0 0 1 3.6 0"/><circle cx="8" cy="13" r=".6" fill="currentColor"/></svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" style="width:22px"><rect x=".8" y="4.3" width="12.4" height="7.4" rx="2"/><rect x="2.3" y="5.8" width="8" height="4.4" rx="1" fill="currentColor" stroke="none"/><path d="M14.6 7v2"/></svg><span>Mon 16 Nov 10:42</span></div></div><div class="island" style="--lw:38px;--rw:56px"><div class="cam"></div><div class="wl"><span class="ring" style="--p:25%"></span></div><div class="wr">18:42</div></div></div></div>
+</section>
+
+<section class="sec"><h2>Other states (look B)</h2>
+ <div class="row2">
+  <div class="item"><div class="cap"><span class="chip">3</span>Break<span class="sub">Cup icon, dim time, dashed bar.</span></div>
+   <div class="scene" style="--h:60px"><div class="menubar"><div class="mb-left"><b>Xcode</b><span>File</span><span>Edit</span><span>View</span><span>Find</span><span>Navigate</span><span>Editor</span><span>Product</span><span>Debug</span><span>Window</span><span>Help</span></div><div class="mb-right"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect x="2" y="3" width="12" height="4.2" rx="2.1"/><rect x="2" y="8.8" width="12" height="4.2" rx="2.1"/></svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path d="M1.8 6.3a9 9 0 0 1 12.4 0M4 8.6a6 6 0 0 1 8 0M6.2 10.9a3 3 0 0 1 3.6 0"/><circle cx="8" cy="13" r=".6" fill="currentColor"/></svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" style="width:22px"><rect x=".8" y="4.3" width="12.4" height="7.4" rx="2"/><rect x="2.3" y="5.8" width="8" height="4.4" rx="1" fill="currentColor" stroke="none"/><path d="M14.6 7v2"/></svg><span>Mon 16 Nov 10:42</span></div></div><div class="island" style="--lw:64px;--rw:64px;--ih:36px"><div class="cam"></div><div class="wl"><span class="dots"><i class="on"></i><i class="on"></i><i></i><i></i></span></div><div class="wr ink2"><svg class="g" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" style="fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;width:13px;height:13px"><path d="M2.5 6h8.5v3.3a3.2 3.2 0 0 1-3.2 3.2H5.7a3.2 3.2 0 0 1-3.2-3.2z"/><path d="M11 7h.9a1.6 1.6 0 0 1 0 3.2H11"/><path d="M5.5 2.5v1.5M8 2.5v1.5"/></svg>3:12</div><div class="bar dash"><i style="--p:36%"></i></div></div></div></div>
+  <div class="item"><div class="cap"><span class="chip">4</span>Paused<span class="sub">Pause icon. Time blinks slowly.</span></div>
+   <div class="scene" style="--h:60px"><div class="menubar"><div class="mb-left"><b>Xcode</b><span>File</span><span>Edit</span><span>View</span><span>Find</span><span>Navigate</span><span>Editor</span><span>Product</span><span>Debug</span><span>Window</span><span>Help</span></div><div class="mb-right"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect x="2" y="3" width="12" height="4.2" rx="2.1"/><rect x="2" y="8.8" width="12" height="4.2" rx="2.1"/></svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path d="M1.8 6.3a9 9 0 0 1 12.4 0M4 8.6a6 6 0 0 1 8 0M6.2 10.9a3 3 0 0 1 3.6 0"/><circle cx="8" cy="13" r=".6" fill="currentColor"/></svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" style="width:22px"><rect x=".8" y="4.3" width="12.4" height="7.4" rx="2"/><rect x="2.3" y="5.8" width="8" height="4.4" rx="1" fill="currentColor" stroke="none"/><path d="M14.6 7v2"/></svg><span>Mon 16 Nov 10:42</span></div></div><div class="island" style="--lw:64px;--rw:64px;--ih:36px"><div class="cam"></div><div class="wl"><span class="dots"><i class="on"></i><i></i><i></i><i></i></span></div><div class="wr"><svg class="g" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path d="M4.5 3.5h2.3v9H4.5zM9.2 3.5h2.3v9H9.2z"/></svg><span class="blink">18:42</span></div><div class="bar dim"><i style="--p:25%"></i></div></div></div></div>
+ </div>
+ <div class="row2">
+  <div class="item"><div class="cap"><span class="chip">4b</span>Done, no answer<span class="sub">Panel closed after 30 s. "Done" blinks.</span></div>
+   <div class="scene" style="--h:60px"><div class="menubar"><div class="mb-left"><b>Xcode</b><span>File</span><span>Edit</span><span>View</span><span>Find</span><span>Navigate</span><span>Editor</span><span>Product</span><span>Debug</span><span>Window</span><span>Help</span></div><div class="mb-right"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect x="2" y="3" width="12" height="4.2" rx="2.1"/><rect x="2" y="8.8" width="12" height="4.2" rx="2.1"/></svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path d="M1.8 6.3a9 9 0 0 1 12.4 0M4 8.6a6 6 0 0 1 8 0M6.2 10.9a3 3 0 0 1 3.6 0"/><circle cx="8" cy="13" r=".6" fill="currentColor"/></svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" style="width:22px"><rect x=".8" y="4.3" width="12.4" height="7.4" rx="2"/><rect x="2.3" y="5.8" width="8" height="4.4" rx="1" fill="currentColor" stroke="none"/><path d="M14.6 7v2"/></svg><span>Mon 16 Nov 10:42</span></div></div><div class="island" style="--lw:64px;--rw:64px;--ih:36px"><div class="cam"></div><div class="wl"><span class="dots"><i class="on"></i><i class="on"></i><i class="on"></i><i></i></span></div><div class="wr"><span class="blink">Done</span></div><div class="bar"><i style="--p:100%"></i></div></div></div></div>
+  <div class="item"><div class="cap"><span class="chip">4c</span>Fullscreen + hover<span class="sub">Hover top center 1 s. Hides when you leave.</span></div>
+   <div class="scene full" style="--h:60px"><div class="video" style="inset:0"></div><div class="island" style="--lw:64px;--rw:64px;--ih:36px"><div class="cam"></div><div class="wl"><span class="dots"><i class="on"></i><i></i><i></i><i></i></span></div><div class="wr">18:42</div><div class="bar"><i style="--p:25%"></i></div></div></div></div>
+ </div>
+</section>
+
+<section class="sec"><h2>Screens without a notch (external monitor)</h2>
+ <div class="item"><div class="cap"><span class="chip">5</span>Running pill<span class="sub">A small black tab at the top center. Same hover and click as the notch.</span></div>
+  <div class="scene" style="--h:60px"><div class="menubar flat"><div class="mb-left"><b>Finder</b><span>File</span><span>Edit</span><span>View</span></div><div class="mb-right"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect x="2" y="3" width="12" height="4.2" rx="2.1"/><rect x="2" y="8.8" width="12" height="4.2" rx="2.1"/></svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path d="M1.8 6.3a9 9 0 0 1 12.4 0M4 8.6a6 6 0 0 1 8 0M6.2 10.9a3 3 0 0 1 3.6 0"/><circle cx="8" cy="13" r=".6" fill="currentColor"/></svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" style="width:22px"><rect x=".8" y="4.3" width="12.4" height="7.4" rx="2"/><rect x="2.3" y="5.8" width="8" height="4.4" rx="1" fill="currentColor" stroke="none"/><path d="M14.6 7v2"/></svg><span>Mon 16 Nov 10:42</span></div></div><div class="island sym" style="--w:104px;--ih:28px;--r:10px"><div style="position:absolute;inset:0 0 6px 0;display:flex;align-items:center;justify-content:center;gap:6px;font-size:12.5px;font-weight:600;font-variant-numeric:tabular-nums">18:42</div><div class="bar" style="left:12px;right:12px;bottom:4px"><i style="--p:25%"></i></div></div></div></div>
+ <div class="row2">
+  <div class="item"><div class="cap"><span class="chip">6-I ✓</span>Idle: hover zone<span class="sub">Chosen.</span></div>
+   <div class="scene" style="--h:60px"><div class="menubar flat"><div class="mb-left"><b>Finder</b><span>File</span></div><div class="mb-right"><span>10:42</span></div></div><div class="zone">invisible hover zone</div></div></div>
+  <div class="item"><div class="cap"><span class="chip">6-II</span>Idle: small tab<span class="sub">Thin black tab.</span></div>
+   <div class="scene" style="--h:60px"><div class="menubar flat"><div class="mb-left"><b>Finder</b><span>File</span></div><div class="mb-right"><span>10:42</span></div></div><div class="island sym" style="--w:64px;--ih:7px;--r:5px"></div></div></div>
+ </div>
+</section>
+
+<section class="sec"><h2>Expanded</h2>
+ <div class="item"><div class="cap"><span class="chip">7</span>Hover peek<span class="sub">Controls and the current task. Closes when the pointer leaves.</span></div>
+  <div class="scene" style="--h:150px"><div class="menubar"><div class="mb-left"><b>Xcode</b><span>File</span><span>Edit</span><span>View</span><span>Find</span><span>Navigate</span><span>Editor</span><span>Product</span><span>Debug</span><span>Window</span><span>Help</span></div><div class="mb-right"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect x="2" y="3" width="12" height="4.2" rx="2.1"/><rect x="2" y="8.8" width="12" height="4.2" rx="2.1"/></svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path d="M1.8 6.3a9 9 0 0 1 12.4 0M4 8.6a6 6 0 0 1 8 0M6.2 10.9a3 3 0 0 1 3.6 0"/><circle cx="8" cy="13" r=".6" fill="currentColor"/></svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" style="width:22px"><rect x=".8" y="4.3" width="12.4" height="7.4" rx="2"/><rect x="2.3" y="5.8" width="8" height="4.4" rx="1" fill="currentColor" stroke="none"/><path d="M14.6 7v2"/></svg><span>Mon 16 Nov 10:42</span></div></div><div class="island sym" style="--w:360px;--ih:128px;--r:22px"><div class="cam"></div>
+   <div class="xc">
+    <div style="display:flex;align-items:flex-end;justify-content:space-between">
+     <div style="display:flex;flex-direction:column;gap:5px"><span class="small ink2">Write README · 2 / 4 pomodoros</span><span class="big">18:42</span></div>
+     <div style="display:flex;gap:7px"><span class="btn ic"><svg class="g" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path d="M4.5 3.5h2.3v9H4.5zM9.2 3.5h2.3v9H9.2z"/></svg></span><span class="btn ic"><svg class="g" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path d="M3.5 3.5v9l6.3-4.5zM10.8 3.5h1.8v9h-1.8z"/></svg></span><span class="btn ic"><svg class="g s" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path d="M3.3 8a4.7 4.7 0 1 0 1.5-3.4"/><path d="M3.2 2.6v2.6h2.6"/></svg></span></div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px"><div class="bar" style="position:relative;left:0;right:0;bottom:0;flex:1;height:3px"><i style="--p:25%"></i></div><span class="dots"><i class="on"></i><i class="on"></i><i></i><i></i></span><span class="small ink2">to long break</span></div>
+   </div></div></div></div>
+
+ <div class="item"><div class="cap"><span class="chip">8</span>Full panel (click)<span class="sub">Mode, timer, intention, tasks. Stats and Settings icons at top right.</span></div>
+  <div class="scene" style="--h:412px"><div class="menubar"><div class="mb-left"><b>Xcode</b><span>File</span><span>Edit</span><span>View</span><span>Find</span><span>Navigate</span><span>Editor</span><span>Product</span><span>Debug</span><span>Window</span><span>Help</span></div><div class="mb-right"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect x="2" y="3" width="12" height="4.2" rx="2.1"/><rect x="2" y="8.8" width="12" height="4.2" rx="2.1"/></svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path d="M1.8 6.3a9 9 0 0 1 12.4 0M4 8.6a6 6 0 0 1 8 0M6.2 10.9a3 3 0 0 1 3.6 0"/><circle cx="8" cy="13" r=".6" fill="currentColor"/></svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" style="width:22px"><rect x=".8" y="4.3" width="12.4" height="7.4" rx="2"/><rect x="2.3" y="5.8" width="8" height="4.4" rx="1" fill="currentColor" stroke="none"/><path d="M14.6 7v2"/></svg><span>Mon 16 Nov 10:42</span></div></div><div class="island sym" style="--w:440px;--ih:392px;--r:26px"><div class="cam"></div>
+   <div class="xc" style="gap:12px">
+    <div style="display:flex;align-items:center;justify-content:space-between"><span class="seg"><span class="on">Focus</span><span>Short</span><span>Long</span></span>
+     <span style="display:flex;gap:14px"><svg class="ico" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path d="M3 13.5V9M8 13.5V3M13 13.5V6.5"/></svg><svg class="ico" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><circle cx="8" cy="8" r="2.2"/><circle cx="8" cy="8" r="4.7"/><path d="M8 1.3v1.9M8 12.8v1.9M1.3 8h1.9M12.8 8h1.9M3.3 3.3l1.3 1.3M11.4 11.4l1.3 1.3M3.3 12.7l1.3-1.3M11.4 4.6l1.3-1.3"/></svg></span></div>
+    <div style="display:flex;align-items:center;justify-content:space-between"><span class="huge">25:00</span>
+     <span style="display:flex;gap:7px"><span class="btn ic"><svg class="g s" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path d="M3.3 8a4.7 4.7 0 1 0 1.5-3.4"/><path d="M3.2 2.6v2.6h2.6"/></svg></span><span class="btn pri" style="height:30px;padding:0 16px"><svg class="g" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path d="M5 3.2v9.6l7.5-4.8z"/></svg>Start</span></span></div>
+    <div class="field">Intention for this session (optional)</div>
+    <div class="hr"></div>
+    <div style="display:flex;justify-content:space-between" class="small ink2"><span>Tasks</span><span>pomodoros</span></div>
+    <div style="display:flex;flex-direction:column;gap:2px;margin-top:-6px">
+     <div class="task on"><span class="rad"></span><span class="n">Write README</span><span class="c">2 / 4</span></div>
+     <div class="task"><span class="rad"></span><span class="n">Review PR #12</span><span class="c">0 / 2</span></div>
+     <div class="task done"><span class="rad"></span><span class="n">Plan sprint</span><span class="c">1 / 1</span></div>
+     <div class="task ink2"><svg class="ico" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" style="width:13px;height:13px"><path d="M8 3v10M3 8h10"/></svg><span class="n">Add task</span></div>
+    </div>
+   </div></div></div></div>
+
+ <div class="row2">
+  <div class="item"><div class="cap"><span class="chip">9</span>Focus end<span class="sub">Chime. Closes after 30 s (see 4b).</span></div>
+   <div class="scene" style="--h:168px"><div class="menubar"><div class="mb-left"><b>Xcode</b><span>File</span><span>Edit</span><span>View</span><span>Find</span><span>Navigate</span><span>Editor</span><span>Product</span><span>Debug</span><span>Window</span><span>Help</span></div><div class="mb-right"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect x="2" y="3" width="12" height="4.2" rx="2.1"/><rect x="2" y="8.8" width="12" height="4.2" rx="2.1"/></svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path d="M1.8 6.3a9 9 0 0 1 12.4 0M4 8.6a6 6 0 0 1 8 0M6.2 10.9a3 3 0 0 1 3.6 0"/><circle cx="8" cy="13" r=".6" fill="currentColor"/></svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" style="width:22px"><rect x=".8" y="4.3" width="12.4" height="7.4" rx="2"/><rect x="2.3" y="5.8" width="8" height="4.4" rx="1" fill="currentColor" stroke="none"/><path d="M14.6 7v2"/></svg><span>Mon 16 Nov 10:42</span></div></div><div class="island sym" style="--w:330px;--ih:148px;--r:24px"><div class="cam"></div>
+    <div class="xc" style="gap:8px">
+     <div style="font-size:16px;font-weight:600">Focus done</div>
+     <div class="small ink2" style="display:flex;gap:8px;align-items:center">Write README <span style="flex:1"></span><span class="dots"><i class="on"></i><i class="on"></i><i class="on"></i><i></i></span> 1 more to long break</div>
+     <div style="display:flex;gap:6px;margin-top:4px"><span class="btn pri">Break 5:00</span><span class="btn">+5 min</span><span class="btn">Skip</span></div>
+    </div></div></div></div>
+  <div class="item"><div class="cap"><span class="chip">10</span>Break end<span class="sub">No extend. No auto-start.</span></div>
+   <div class="scene" style="--h:168px"><div class="menubar"><div class="mb-left"><b>Xcode</b><span>File</span><span>Edit</span><span>View</span><span>Find</span><span>Navigate</span><span>Editor</span><span>Product</span><span>Debug</span><span>Window</span><span>Help</span></div><div class="mb-right"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect x="2" y="3" width="12" height="4.2" rx="2.1"/><rect x="2" y="8.8" width="12" height="4.2" rx="2.1"/></svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path d="M1.8 6.3a9 9 0 0 1 12.4 0M4 8.6a6 6 0 0 1 8 0M6.2 10.9a3 3 0 0 1 3.6 0"/><circle cx="8" cy="13" r=".6" fill="currentColor"/></svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" style="width:22px"><rect x=".8" y="4.3" width="12.4" height="7.4" rx="2"/><rect x="2.3" y="5.8" width="8" height="4.4" rx="1" fill="currentColor" stroke="none"/><path d="M14.6 7v2"/></svg><span>Mon 16 Nov 10:42</span></div></div><div class="island sym" style="--w:330px;--ih:148px;--r:24px"><div class="cam"></div>
+    <div class="xc" style="gap:8px">
+     <div style="font-size:16px;font-weight:600">Break over</div>
+     <div class="small ink2">Next: Write README</div>
+     <div style="display:flex;gap:6px;margin-top:4px"><span class="btn pri">Focus 25:00</span><span class="btn">Stop</span></div>
+    </div></div></div></div>
+ </div>
+
+ <div class="item"><div class="cap"><span class="chip">11</span>Fullscreen app<span class="sub">Hidden in fullscreen. Comes down only at session end, then hides again.</span></div>
+  <div class="scene full" style="--h:200px"><div class="video">Fullscreen app (video, game, slides)</div>
+   <div class="island sym" style="--w:330px;--ih:148px;--r:24px"><div class="cam"></div>
+    <div class="xc" style="gap:8px">
+     <div style="font-size:16px;font-weight:600">Focus done</div>
+     <div class="small ink2" style="display:flex;gap:8px;align-items:center">Write README <span style="flex:1"></span><span class="dots"><i class="on"></i><i class="on"></i><i class="on"></i><i></i></span> 1 more to long break</div>
+     <div style="display:flex;gap:6px;margin-top:4px"><span class="btn pri">Break 5:00</span><span class="btn">+5 min</span><span class="btn">Skip</span></div>
+    </div></div></div></div>
+</section>
+
+<section class="sec"><h2>Stats window</h2>
+ <div class="win">
+  <div class="tb"><span class="tl"><i></i><i></i><i></i></span><span class="t">Melete Stats</span><span class="sp"></span><span class="seg"><span class="on">Week</span><span>Month</span><span>Year</span></span></div>
+  <div class="wb">
+   <div class="tiles">
+    <div class="tile"><div class="k">Today</div><div class="v">6 <small>pomodoros</small></div></div>
+    <div class="tile"><div class="k">Focus today</div><div class="v">2h 30m</div></div>
+    <div class="tile"><div class="k">Streak</div><div class="v">5 <small>days</small></div></div>
+    <div class="tile"><div class="k">This week</div><div class="v">27 <small>pomodoros</small></div></div>
+   </div>
+   <div class="h3">Pomodoros per day</div>
+   <div class="chart">
+    <div><span>4</span><b style="height:50%"></b></div><div><span>6</span><b style="height:75%"></b></div><div><span>3</span><b style="height:37%"></b></div><div><span>5</span><b style="height:62%"></b></div><div><span>0</span><b style="height:2px"></b></div><div><span>3</span><b style="height:37%"></b></div><div class="today"><span>6</span><b style="height:75%"></b></div>
+   </div>
+   <div class="xl"><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span><span>Today</span></div>
+   <div class="h3">By task</div>
+   <div class="bt"><span>Write README</span><span class="tr"><i style="width:100%"></i></span><span class="r">9 · 3h 45m</span></div>
+   <div class="bt"><span>Review PR #12</span><span class="tr"><i style="width:78%"></i></span><span class="r">7 · 2h 55m</span></div>
+   <div class="bt"><span class="ink2">Intentions only</span><span class="tr"><i style="width:67%"></i></span><span class="r">6 · 2h 30m</span></div>
+   <div class="bt"><span>Plan sprint</span><span class="tr"><i style="width:55%"></i></span><span class="r">5 · 2h 05m</span></div>
+   <div class="h3">Today</div>
+   <table class="tbl">
+    <tr><td>11:05</td><td>Write README</td><td class="r">Focus 25:00</td></tr>
+    <tr><td>10:35</td><td class="ink2">"Fix the build"</td><td class="r">Focus 25:00</td></tr>
+    <tr><td>10:30</td><td class="ink2">Short break</td><td class="r">5:00</td></tr>
+    <tr><td>10:00</td><td>Write README</td><td class="r">Focus 30:00 (+5)</td></tr>
+   </table>
+  </div>
+ </div>
+</section>
+
+<section class="sec"><h2>Settings window (gear in the full panel)</h2>
+ <div class="win">
+  <div class="tb"><span class="tl"><i></i><i></i><i></i></span><span class="t">Melete Settings</span></div>
+  <div class="wb"><div class="form">
+   <div class="fs">Timer</div>
+   <div class="fl">Focus</div><div class="fv"><span class="step"><span>25 min</span><i>−</i><i>+</i></span></div>
+   <div class="fl">Short break</div><div class="fv"><span class="step"><span>5 min</span><i>−</i><i>+</i></span></div>
+   <div class="fl">Long break</div><div class="fv"><span class="step"><span>15 min</span><i>−</i><i>+</i></span></div>
+   <div class="fl">Long break after</div><div class="fv"><span class="step"><span>4 sessions</span><i>−</i><i>+</i></span></div>
+   <div class="fs">Session end</div>
+   <div class="fl">Sound</div><div class="fv"><span class="pill">Chime ▾</span><span class="sl"><i></i><b></b></span></div>
+   <div class="fs">General</div>
+   <div class="fl">Launch at login</div><div class="fv"><span class="sw"></span></div>
+  </div></div>
+  <div class="wf"><span>Melete 0.1 · GPL-3.0</span><span style="flex:1"></span><span class="pill" style="color:#f5f5f7">Quit Melete</span></div>
+ </div>
+</section>
+</div></body></html>
