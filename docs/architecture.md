@@ -71,6 +71,11 @@ These fill the gaps the review found. They are in `TimerEngine` and in `spec.md`
 | Full panel (8) while running | Shows mode (read-only), time with pause/skip/reset, intention, tasks (selecting a task changes the task credited at 0:00). Closes on click outside or Esc, not on hover exit |
 | 4b hover / click | Opens the session-end choices (9 or 10) again |
 | Tasks UI | Click circle = done/undone. Double-click title = rename. Hover row → planned-count stepper (−/+) and delete (×). Drag to reorder. Done tasks stay, struck through |
+| Session end at 0:00 (phase 4) | Choices 9/10 open from any expansion (none, peek, full) with a 30 s auto-close. From full: commit text, drop key focus. Pointer enter/exit does not cancel the deadline; pointer inside at the deadline → close on pointer exit. Reopened 4b choices = normal hover panel |
+| Fullscreen (phase 4) | Entering fullscreen collapses a full panel carried over from the desktop. 1 s dwell on 4b opens the choices (no key focus) |
+| Esc (phase 4) | One Esc commits the text edit and closes the full panel |
+| Action at the deadline (phase 4) | Every action first completes a session that is past 0:00. Pause, reset and skip then do nothing more; the choices show |
+| Task credit (phase 4) | Any focus session (counted or not) is credited to the task / intention selected when it ends. "+5" keeps the 0:00 credit |
 
 ## Notch shell technical notes (from the review)
 
