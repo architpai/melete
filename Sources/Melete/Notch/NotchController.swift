@@ -132,7 +132,7 @@ final class NotchController {
         }
         let inPanel: CGPoint? = vm.machine.expansion == .full && contains(panel.frame, p)
             ? CGPoint(x: p.x - panel.frame.minX, y: panel.frame.maxY - p.y) : nil
-        if inPanel != vm.pointerInPanel { vm.pointerInPanel = inPanel; NotchLog.log("inPanel \(String(describing: inPanel))") }
+        if inPanel != vm.pointerInPanel { vm.pointerInPanel = inPanel }
         let inside = contains(hitRect(), p)
         if inside != vm.machine.pointerInside {
             NotchLog.log("pointer inside=\(inside) at \(p)")
