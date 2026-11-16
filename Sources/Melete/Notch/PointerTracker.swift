@@ -38,6 +38,8 @@ final class PointerTracker {
                 guard let self, let panel = self.panel else { return false }
                 if type == .keyDown {
                     guard keyCode == 53, window === panel else { return false }
+                    // Input method composing text (e.g. Japanese): Esc cancels the composition, not the panel.
+                    if let editor = panel.firstResponder as? NSTextView, editor.hasMarkedText() { return false }
                     // One Esc closes the panel, also while typing: the controller commits the text first.
                     self.onEscape()
                     return true
