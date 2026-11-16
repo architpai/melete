@@ -1,137 +1,130 @@
 # Melete — architecture and build plan
 
-Read `spec.md` first. The spec wins if this file disagrees with it.
+Read `spec.md` first. The spec wins if this file disagrees with it. The coordinator ("coord") has the last word.
 
 ## Toolchain
 
-- Swift Package Manager (no `.xcodeproj` in git). Swift tools 6.0, language mode 5, macOS 14 deployment target.
-- Build on Xcode 26 toolchain (`swift build`). SwiftData `@Model` macros come from the SDK.
-- `scripts/bundle.sh` makes `build/Melete.app`: release build, `Info.plist` (`LSUIElement = YES`, bundle id `dev.melete.Melete`), resources, ad-hoc `codesign -s -`.
-- `Makefile`: `make build`, `make test`, `make app`, `make run` (bundles and opens the app).
-- Users "build from source": `git clone … && make run`. Only Xcode / Command Line Tools needed.
+- Swift Package Manager (no `.xcodeproj` in git). Swift tools 6.0, language mode 5, macOS 14 target.
+- **Full Xcode is required** (SwiftData macros are not in Command Line Tools). `make check` stops with a message if `xcode-select -p` is not Xcode.
+- `make build` / `make test` (Swift Testing) / `make app` (release `build/Melete.app`) / `make run` / `make debug-app` / `make debug-run STATE=<name>`.
+- `scripts/bundle.sh` writes `Info.plist` (`LSUIElement`, bundle id `dev.melete.Melete`) and ad-hoc signs. No bundled resources in v1 (chimes are system sounds via `NSSound`).
+- SwiftData store: `~/Library/Application Support/Melete/Melete.store` (explicit URL). Verified working in the bundled app and in `swift test`.
 
-## Package layout
+## Package layout and owners
 
 ```
-Package.swift
-Sources/
-  MeleteCore/                 # pure logic. Foundation + SwiftData + Observation. NO AppKit/SwiftUI.
-    Timer/    Phase.swift, TimerState.swift, TimerEngine.swift, Clock.swift
-    Model/    TaskItem.swift, SessionRecord.swift          (SwiftData @Model)
-    Store/    MeleteStore.swift                            (task CRUD, session log, queries)
-    Settings/ MeleteSettings.swift                         (UserDefaults, @Observable)
-    Stats/    StatsCalculator.swift                        (today, streak, per day, per task)
-  Melete/                     # the app (executable target). AppKit + SwiftUI.
-    App/      main.swift, AppDelegate.swift, AppModel.swift (wires engine + store + settings)
-    Notch/    NotchPanel.swift, NotchWindowController.swift, ScreenTracker.swift,
-              NotchGeometry.swift, HoverController.swift, FullscreenDetector.swift,
-              NotchViewModel.swift (state machine for 1/2/B/3/4/4b/7/8/9/10)
-    Notch/Views/ CollapsedView, IdleHoverView, PeekView, FullPanelView, SessionEndView,
-              NoNotchTabView, FirstRunHint, MonoStyle.swift
-    Windows/  StatsWindow.swift + views, SettingsWindow.swift + views
-    Services/ ChimePlayer.swift, LoginItem.swift (SMAppService.mainApp)
-    Resources/ Sounds/*.caf (free-license or generated)
-Tests/
-  MeleteCoreTests/            # engine, counting rules, stats, store (in-memory container)
-scripts/bundle.sh
-Makefile
+Package.swift                                  coord
+Makefile, scripts/                             coord
+Sources/MeleteCore/
+  Timer/  Phase.swift, TimeSource.swift        coord (contract)
+          TimerEngine.swift                    coord wrote it; sol owns tests + bug fixes (no public signature change without coord)
+  Model/  TaskItem.swift, SessionRecord.swift  coord (contract)
+  Store/  MeleteStore.swift                    coord wrote it; sol may extend (add methods, fix bugs)
+  Settings/MeleteSettings.swift                coord wrote it; sol may extend
+  Stats/  StatsCalculator.swift                sol implements (stub bodies now)
+  NotchState/**                                opus (pure state logic for the notch, testable)
+Sources/Melete/
+  App/    main.swift, AppDelegate.swift, AppModel.swift   coord
+  Shared/ MonoStyle.swift                      coord (style + timing constants; ask to change)
+  Notch/**                                     opus
+  Windows/**                                   sol
+  Services/** (ChimePlayer, LoginItem)         sol
+Tests/MeleteCoreTests/
+  NotchState*Tests.swift                       opus
+  everything else                              sol
 ```
-
-## Shared contract (written by the coordinator in the scaffold)
-
-The scaffold commit defines these public types in `MeleteCore`. Bodies may be stubs. **Changes to public signatures need coordinator approval on the board.**
-
-- `enum Phase { focus, shortBreak, longBreak }`
-- `enum TimerState { idle, running(endsAt: Date, total: TimeInterval), paused(remaining: TimeInterval, total: TimeInterval), awaitingChoice(ended: Phase) }`
-- `protocol Clock { var now: Date { get } }` + `SystemClock`. Tests use a manual clock.
-- `@MainActor @Observable final class TimerEngine`
-  - state: `phase`, `state`, `cyclePosition` (0…cycleLength), `cycleLength`, `currentTaskID: UUID?`, `intention: String?`
-  - actions: `startFocus()`, `start(_ phase:)`, `pause()`, `resume()`, `skip()`, `reset()`, `extendFiveMinutes()`, `startBreak()`, `skipBreak()`, `stop()`
-  - reads: `remaining(at:)`, `progress(at:)` (0…1)
-  - events: `var onPhaseEnded: ((Phase) -> Void)?`, `var onPomodoroCompleted: ((CompletedPomodoro) -> Void)?`
-  - time is wall-clock (`endsAt`), one scheduled wake-up at `endsAt`, not a 1 s tick. Sleep/wake safe.
-- `@Model TaskItem { id, title, plannedPomodoros, completedPomodoros, isDone, doneAt, createdAt, sortIndex }`
-- `@Model SessionRecord { id, phase, startedAt, endedAt, plannedDuration, actualDuration, counted, taskID, taskTitle, intention }`
-- `@MainActor final class MeleteStore` (wraps `ModelContext`): tasks CRUD + reorder + mark done, `log(_:)`, `sessions(in:)`. `init(inMemory:)` for tests.
-- `@MainActor @Observable final class MeleteSettings`: durations, cycleLength (2…6), chimeName, chimeVolume, launchAtLogin, hasCompletedFirstRun.
-- `struct StatsCalculator`: `today`, `focusTimeToday`, `streak`, `perDay(range:)`, `perTask(range:)`.
-
-Counting rules: see `spec.md` → "Counting rules (accepted)". These live only in `TimerEngine` and have unit tests.
-
-## Work split
-
-| Area | Owner | Branch | Owns these paths |
-|---|---|---|---|
-| Notch shell | **Opus 5.5** ("opus") | `feat/notch-shell` | `Sources/Melete/App/**`, `Sources/Melete/Notch/**` |
-| Core + windows | **GPT 6.1 Sol** ("sol") | `feat/core-windows` | `Sources/MeleteCore/**`, `Tests/**`, `Sources/Melete/Windows/**`, `Sources/Melete/Services/**`, `Sources/Melete/Resources/**`, `scripts/**`, `Makefile` |
-| Contract, `Package.swift`, docs, merge | **Coordinator** ("coord") | `main` | `Package.swift`, `docs/**`, public signatures in `MeleteCore` |
 
 Rules:
-- Do not edit files outside your paths. If you need a change there, ask on the board.
-- Until the other side lands, code against the contract. Use the stubs.
-- Each delegate keeps `swift build` green on its branch, and `make test` green for sol.
+- Edit only your paths. Need a change elsewhere? Post on the board. Small, obvious fixes to coord files (a compile error you caused) are OK if you post a note.
+- Keep `swift build` and `swift test` green on your branch at every commit.
+- Do not push. Commit to your branch only. Coord merges and pushes.
 
-### Opus 5.5 — notch shell acceptance
-- Non-activating `NSPanel`, borderless, above the menu bar, all Spaces, fullscreen auxiliary. Mouse pass-through when collapsed.
-- Notch geometry from `safeAreaInsets` / `auxiliaryTopLeftArea` / `auxiliaryTopRightArea`. Fallback tab on no-notch screens.
-- Follows the screen with the pointer. Fullscreen: hidden, shows at session end and after 1 s hover at top center.
-- Every state in `spec.md` → "Notch states", matching the mocks (64 pt wings, dots, bar, cup, pause, blink, Done).
-- Hover = peek, click = full panel. Panel at session end closes after 30 s → 4b. Invisible hover zone with ~0.4 s dwell on no-notch screens.
-- First-run panel with "Melete lives here". `applicationShouldHandleReopen` opens the full panel. Gear opens Settings, chart icon opens Stats (call the window API sol provides; use a stub until then).
-- Low idle CPU: no per-frame work when collapsed and idle. Redraw the countdown once per second only while visible.
+## Contract summary (see the source for full docs)
 
-### GPT 6.1 Sol — core + windows acceptance
-- `TimerEngine` with all actions and counting rules. Unit tests for every rule, pause/resume, extend, skip, stop, cycle wrap, day change.
-- SwiftData models + `MeleteStore` (local only). Tests with an in-memory container.
-- `MeleteSettings` (UserDefaults). `StatsCalculator` with tests (streak, ranges).
-- Stats window (mock 3/3): tiles, Week/Month/Year chart (Swift Charts), by task, today list. Monochrome.
-- Settings window: durations, cycle length 2–6, chime picker + volume (preview plays), launch at login, Quit.
-- `ChimePlayer`, `LoginItem`, `scripts/bundle.sh`, `Makefile`.
-- Expose `StatsWindowController.show()` and `SettingsWindowController.show()` for the notch shell.
+- `TimerEngine` (`@MainActor @Observable`): `phase`, `state: TimerState`, `cyclePosition`, `durations`, `currentTaskID`, `intention`, `nextBreak`.
+  Actions: `startFocus()`, `start(_:)`, `select(_:)`, `pause()`, `resume()`, `togglePause()`, `skip()`, `reset()`, `extendFiveMinutes()`, `startBreak()`, `skipBreak()`, `stop()`, `reconcile()`.
+  Reads: `remaining(at:)`, `progress(at:)`. Events: `onPhaseEnded(Phase)` (reached 0:00), `onSessionEnded(SessionSummary)` (any end).
+  DEBUG only: `debugForce(phase:state:cyclePosition:)`.
+- `TimerState`: `.idle`, `.running(endsAt:total:)`, `.paused(remaining:total:)`, `.awaitingChoice(ended:)`.
+- `SessionSummary` → `MeleteStore.record(_:)` inserts or updates by id and increments the task's count once.
+- `MeleteStore`: tasks CRUD + `move`, `record`, `sessions(from:to:)`, `container` (use `.modelContainer(model.store.container)` + `@Query` in SwiftUI if you like).
+- `MeleteSettings`: minutes, `cycleLength` (2…6), `chimeName` (`MeleteSettings.chimeChoices`), `chimeVolume`, `hasCompletedFirstRun`, `durations`. Launch at login = `LoginItem` (reads `SMAppService`, not stored).
+- `AppModel` (app target): `settings`, `store`, `engine`, `chime`, `openStats()`, `openSettings()`, `onSessionReachedZero` (notch sets it), `currentTaskTitle`, `quit()`. It already wires: summary → store, 0:00 → chime + `onSessionReachedZero`, settings → engine durations, wake → `engine.reconcile()`.
+- `NotchController` (opus): `init(model:)`, `start()`, `showFullPanel(firstRun:)`.
+- `StatsWindowController` / `SettingsWindowController` (sol): `init(model:)`, `show()`.
+
+## State machine decisions (coord, 16 Nov)
+
+These fill the gaps the review found. They are in `TimerEngine` and in `spec.md`.
+
+| Event | Result |
+|---|---|
+| Skip during focus | Not counted. Idle, focus next. Cycle unchanged |
+| Skip during a break | Next focus starts at once. Skipping a long break resets the cycle |
+| Reset | Session ends uncounted. Idle, same phase next |
+| Manual Focus/Short/Long (idle only) | Sets the next phase. Does not change the cycle |
+| Long break ends or is skipped | Cycle (dots) back to 0 |
+| Durations change mid-session | Applies to the next session. Smaller `cycleLength` clamps the dots now |
+| New day | First start on a new day resets the cycle. No midnight timer |
+| Quit / relaunch | `cyclePosition` is kept (UserDefaults). A running session is lost and not logged |
+| Number of dots | = `cycleLength` (2…6) |
+| Full panel (8) while running | Shows mode (read-only), time with pause/skip/reset, intention, tasks (selecting a task changes the task credited at 0:00). Closes on click outside or Esc, not on hover exit |
+| 4b hover / click | Opens the session-end choices (9 or 10) again |
+| Tasks UI | Click circle = done/undone. Double-click title = rename. Hover row → planned-count stepper (−/+) and delete (×). Drag to reorder. Done tasks stay, struck through |
+
+## Notch shell technical notes (from the review)
+
+- `NSPanel` subclass, `.borderless + .nonactivatingPanel`, override `canBecomeKey` → `true` only while the full panel shows (the intention / task fields need typing). Session-end and peek must not take key focus.
+- Collapsed: `ignoresMouseEvents = true` (tracking areas stop working). Detect hover with `NSEvent.addGlobalMonitorForEvents(.mouseMoved)` + a local monitor; no Accessibility permission needed. Hover exit delay `Mono.hoverExitDelay`.
+- Fullscreen: no public API. Use `NSWorkspace.activeSpaceDidChangeNotification` + `CGWindowListCopyWindowInfo` on the pointer's screen (a window covering the whole screen frame at layer 0) as the main check. Fallback: treat the screen as fullscreen when the menu bar is hidden (`screen.frame == screen.visibleFrame` top). Test with Safari video and Keynote.
+- Notch geometry: `safeAreaInsets.top > 0` → notch; width = `frame.width − auxiliaryTopLeftArea.width − auxiliaryTopRightArea.width`. Else no-notch tab.
+- Level: start with `.mainMenu + 3` (boring.notch). Test with many status items: wings must not hide clicks on status items outside the wing area.
+- Low idle CPU: no timers when idle + collapsed. Redraw the countdown once per second only while it is visible (`TimelineView(.periodic)` or one `Timer`).
+- DEBUG: `MELETE_DEBUG_STATE` env var forces a notch state at launch (names: `idle, idleHover, running, break, paused, done, peek, full, focusEnd, breakEnd, noNotch, firstRun`) using `engine.debugForce` + view-state overrides.
 
 ## Message board (delegates ↔ coordinator)
 
-Location: **`/Users/paiarchit/random-musing/melete/.board/`** (absolute path, outside the worktrees, gitignored). Every agent uses this same path.
+Location: **`/Users/paiarchit/random-musing/melete/.board/`** — absolute path, outside the worktrees, gitignored. All agents use this path.
 
 ```
 .board/
-  BOARD.md          # append-only log. Never edit or delete old entries.
-  status/opus.md    # your current status. Overwrite freely.
+  README.md            # these rules
+  msgs/                # one file per message, never edited after writing
+    <epoch>-<from>-<type>.md      e.g. 1794800000-opus-question.md
+  status/opus.md       # your current status (overwrite)
   status/sol.md
-  reviews/          # review files: <reviewer>-on-<branch>-<n>.md
+  reviews/<reviewer>-on-<owner>-<n>.md
 ```
 
-Entry format in `BOARD.md`:
+Message file content: first line `to: <opus|sol|coord|all>`, then the text. Use `date +%s` for the epoch. Reference files as `path:line` and commits by short SHA.
 
-```
-## 2026-11-16 14:05 · opus → sol · question
-Text. Reference files as path:line and commits by short SHA.
-```
-
-Types: `status`, `question`, `answer`, `contract-change` (to coord), `review-request`, `review`, `blocker`, `decision` (coord only).
+Types: `status`, `question`, `answer`, `contract-change`, `review-request`, `review`, `blocker`, `decision` (coord only).
 
 Rules:
-- Read the board when you start, before each commit, and before you finish.
-- Append with `cat >> … <<'EOF'` so you do not overwrite other entries.
-- The coordinator has the last word. A `decision` entry from coord overrides other entries.
-- If you are blocked, write a `blocker` entry and continue with the next task you can do.
+- Check `msgs/` (`ls -1 .board/msgs | tail`) when you start, before every commit, and before you finish.
+- **Never wait for an answer.** Every question must state the default you will use. Use that default, write it in your status, and continue. The other agent or coord can correct it later.
+- A `decision` from coord overrides everything.
+- The contract is frozen. Use `contract-change` only when you are blocked; meanwhile work around it in your own paths.
 
 ## Phases
 
-1. **Scaffold** (coord): package, contract stubs, `swift build` green, board created. Commit to `main`, push.
-2. **Build** (parallel): opus and sol in separate worktrees from `main`.
-3. **Cross-review**: opus reviews `feat/core-windows`, sol reviews `feat/notch-shell`. Reviews go to `.board/reviews/`. Each owner fixes or answers every finding.
-4. **Merge** (coord): merge both into `main`, fix integration, `make test`, `make app`.
-5. **User test**: the user runs `make run` with the manual checklist below.
+1. **Scaffold** (coord) — done: package, contract, working engine + store + settings, app wiring, stubs, bundle script, tests green.
+2. **Build** (parallel, separate worktrees from `main`):
+   - opus, first milestone = **spike**: panel above the menu bar, mouse pass-through + hover, notch geometry, follow pointer screen, fullscreen detection. Post a `status` with results (what works, what does not) before building the views.
+   - sol, first milestone = engine tests for every rule in the table above + StatsCalculator with tests. Then windows and services.
+3. **Merge** (coord): merge both into `main`, fix integration, `make test`, `make app`.
+4. **Cross-review** on the merged app: opus reviews sol's paths, sol reviews opus's paths. Reviews in `.board/reviews/`. Owners fix on top of `main`; coord merges.
+5. **User test**: the user runs `make run` with the checklist below.
 
 ## Manual test checklist (phase 5)
 
+- First launch: full panel opens with "Melete lives here". Open the app again from Finder → full panel.
 - Idle notch looks normal. Hover → Start. Click → full panel.
-- Start focus → collapsed B: dots, time, bar. Pause → pause icon, blink. Break → cup, dashed bar.
-- Session end: panel opens, chime, choices; no answer → closes after 30 s → "Done" blinks.
-- External monitor: tab follows pointer screen; idle = nothing, hover zone opens it.
-- Fullscreen video: hidden; shows at session end; 1 s hover shows it.
-- Tasks: add, select, count goes up, mark done, count past plan.
-- Stats window and Settings window open from the panel icons. Quit from Settings.
+- Start focus → collapsed B: dots (= cycle length), time, bar. Pause → pause icon, blink. Break → cup, dashed bar.
+- Session end: panel opens, chime, choices; no answer → closes after 30 s → "Done" blinks; hover reopens choices.
+- External monitor: tab follows pointer screen; idle = nothing, hover zone (0.4 s) opens it.
+- Fullscreen video: hidden; shows at session end; 1 s hover at top center shows it.
+- Tasks: add, select, rename, planned count, reorder, delete, count goes up at 0:00, mark done, count past plan.
+- Stats window and Settings window open from the panel icons. Settings changes apply to the next session. Quit from Settings.
 - Sleep the Mac mid-session → time is correct after wake.
 - Activity Monitor: idle CPU ≈ 0 %.

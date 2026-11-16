@@ -19,7 +19,7 @@ Status: design final (16 Nov 2026). Mocks in `docs/mocks/` agree with this spec.
 
 1. **Core timer**: focus, short break, long break, cycles. Start, pause, skip, reset. Defaults 25 / 5 / 15, long break after 4 focus sessions. Durations and cycle length are editable in Settings. Cycle length ("long break after") is 2–6, so the dots fit in the wing.
 2. **Tasks**: a task list. Each task has planned pomodoros and counts the done ones (e.g. 2 / 4). The count can go past the plan (5 / 4). The user marks a task done by hand. A quick one-off intention can be typed for a session instead of a task.
-3. **Stats**: a separate Mac window. Tiles (today, focus time today, streak, this week), pomodoros per day chart (week / month / year), stats by task (including an "Intentions only" group), today's history list.
+3. **Stats**: a separate Mac window. Tiles (today, focus time today, streak, this week = rolling 7 days), pomodoros chart (Week = 7 days, Month = 30 days, both per day; Year = 12 months, per month). Streak = days in a row with ≥1 pomodoro, ending today (or yesterday if today has none yet). Plus stats by task (including an "Intentions only" group), today's history list.
 4. **Sound**: a short chime at session end. Chime picker (a few sounds) and volume slider in Settings.
 5. **Launch at login**.
 6. **First launch**: no Dock icon (agent app). On first launch the full panel opens once with the hint "Melete lives here". Opening the app again from Finder / Spotlight opens the full panel.
@@ -32,7 +32,7 @@ Not in v1: menu bar icon, global hotkey, right-click menu, CSV export, auto-paus
 |---|---|---|
 | 1 | Idle | Normal notch. Nothing extra |
 | 2 | Idle + hover | Notch grows down a little: Start focus button + duration |
-| B | Running, collapsed | Left wing: 4 dots = focus sessions in the cycle before the long break. Right wing: remaining time. Thin progress bar under the notch. 64 pt wing at each side, the same width in every running state |
+| B | Running, collapsed | Left wing: one dot per focus session in the cycle (dots = cycle length, 2–6; default 4); filled = done. Right wing: remaining time. Thin progress bar under the notch. 64 pt wing at each side, the same width in every running state |
 | 3 | Break | Cup icon beside the time, dim time, dashed progress bar |
 | 4 | Paused | Pause icon beside the time, time blinks slowly, dim bar |
 | 4b | Done, no answer | Panel closed after 30 s. Right wing shows "Done", blinking, until the user chooses |
@@ -66,6 +66,8 @@ Not in v1: menu bar icon, global hotkey, right-click menu, CSV export, auto-paus
 - Chime: a bundled sound with a GPL-compatible license, or a system sound.
 
 ## Counting rules (accepted)
+
+Full state machine (skip, reset, stop, day change, relaunch, panel behavior, task controls): `architecture.md` → "State machine decisions".
 
 - A pomodoro counts when a focus session reaches 0:00. "+5 min" adds to the same pomodoro.
 - Skip during focus: the session does not count and the cycle does not advance.
