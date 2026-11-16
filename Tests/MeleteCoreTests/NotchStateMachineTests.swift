@@ -128,13 +128,58 @@ struct NotchStateMachineTests {
         #expect(m.presentation == .collapsed)
     }
 
-    @Test func pointerEnteringAutoChoicesCancelsAutoClose() {
+    @Test func pointerDoesNotCancelAutoCloseDeadline() {
+        var m = NotchMachine(status: .running(.focus))
+        m.handle(.sessionReachedZero(.shortBreak))
+        let fxIn = m.handle(.pointer(inside: true))
+        #expect(!fxIn.contains(.cancel(.autoClose)))
+        #expect(m.expansion == .choicesAuto)
+        let fxOut = m.handle(.pointer(inside: false))
+        #expect(!fxOut.contains(.cancel(.autoClose)))
+        #expect(!fxOut.contains(.schedule(.exit, 0.3))) // leaving does not shorten the deadline
+        m.handle(.timerFired(.exit))
+        #expect(m.presentation == .choices(ended: .shortBreak))
+        m.handle(.timerFired(.autoClose))
+        #expect(m.presentation == .collapsed) // 4b
+        #expect(m.status == .awaiting(.shortBreak))
+    }
+
+    @Test func pointerInsideAtDeadlineClosesWhenPointerLeaves() {
         var m = NotchMachine(status: .running(.focus))
         m.handle(.sessionReachedZero(.focus))
-        let fx = m.handle(.pointer(inside: true))
-        #expect(fx.contains(.cancel(.autoClose)))
-        #expect(m.expansion == .hover)
+        m.handle(.pointer(inside: true))
         m.handle(.timerFired(.autoClose))
+        #expect(m.presentation == .choices(ended: .focus)) // still open under the pointer
+        #expect(m.expansion == .hover)
+        let fx = m.handle(.pointer(inside: false))
+        #expect(fx.contains(.schedule(.exit, 0.3)))
+        m.handle(.timerFired(.exit))
+        #expect(m.presentation == .collapsed) // 4b
+    }
+
+    @Test func sessionEndFromPeekOpensAutoChoices() {
+        var m = NotchMachine(status: .running(.focus))
+        m.handle(.pointer(inside: true))
+        #expect(m.presentation == .peek)
+        let fx = m.handle(.sessionReachedZero(.focus))
+        #expect(fx.contains(.schedule(.autoClose, 30)))
+        #expect(m.expansion == .choicesAuto)
+        #expect(m.presentation == .choices(ended: .focus))
+        m.handle(.timerFired(.autoClose)) // pointer still inside
+        m.handle(.pointer(inside: false))
+        m.handle(.timerFired(.exit))
+        #expect(m.presentation == .collapsed)
+    }
+
+    @Test func reopenedDoneChoicesHaveNoDeadline() {
+        var m = NotchMachine(status: .running(.focus))
+        m.handle(.sessionReachedZero(.focus))
+        m.handle(.timerFired(.autoClose))
+        let fx = m.handle(.pointer(inside: true))
+        #expect(!fx.contains { if case .schedule(.autoClose, _) = $0 { true } else { false } })
+        #expect(m.expansion == .hover)
+        #expect(m.presentation == .choices(ended: .focus))
+        m.handle(.timerFired(.autoClose)) // a late timer does nothing
         #expect(m.presentation == .choices(ended: .focus))
     }
 
@@ -154,12 +199,41 @@ struct NotchStateMachineTests {
         #expect(m.suppressHover)
     }
 
-    @Test func sessionEndKeepsFullPanelOpen() {
+    @Test func sessionEndFromFullShowsChoicesAndDropsKey() {
         var m = NotchMachine(status: .running(.focus))
         m.handle(.openFull(firstRun: false))
         let fx = m.handle(.sessionReachedZero(.focus))
-        #expect(fx.isEmpty)
-        #expect(m.presentation == .full(firstRun: false))
+        #expect(fx.contains(.resignKey))
+        #expect(fx.contains(.schedule(.autoClose, 30)))
+        #expect(m.presentation == .choices(ended: .focus))
+        #expect(!m.wantsKey)
+        m.handle(.timerFired(.autoClose))
+        #expect(m.presentation == .collapsed) // 4b
+    }
+
+    @Test func oneEscapeClosesFullPanel() {
+        var m = NotchMachine(status: .running(.focus))
+        m.handle(.openFull(firstRun: false))
+        m.handle(.pointer(inside: true))
+        let fx = m.handle(.escape)
+        #expect(fx.contains(.resignKey)) // the controller commits text edits on resign
+        #expect(m.presentation == .collapsed)
+        #expect(m.expansion == .none)
+        #expect(!m.wantsKey)
+    }
+
+    @Test func followsPointerScreenAgainWhenExpansionCloses() {
+        var m = NotchMachine(status: .running(.focus))
+        #expect(m.followsPointerScreen)
+        m.handle(.pointer(inside: true))
+        #expect(!m.followsPointerScreen) // pinned while the peek is open
+        m.handle(.pointer(inside: false))
+        m.handle(.timerFired(.exit))
+        #expect(m.followsPointerScreen)
+        m.handle(.openFull(firstRun: false))
+        #expect(!m.followsPointerScreen)
+        m.handle(.clickOutside)
+        #expect(m.followsPointerScreen)
     }
 
     @Test func peekStaysWhenPausedOrReset() {
@@ -194,15 +268,80 @@ struct NotchStateMachineTests {
         #expect(m.presentation == .hidden)
     }
 
-    @Test func fullscreenSessionEndStaysWhilePointerInside() {
+    @Test func fullscreenSessionEndStaysWhilePointerInsideAtDeadline() {
         var m = NotchMachine(status: .running(.focus), fullscreen: true)
         m.handle(.sessionReachedZero(.focus))
         m.handle(.pointer(inside: true))
-        #expect(m.presentation == .choices(ended: .focus))
+        m.handle(.pointer(inside: false))
+        m.handle(.timerFired(.exit))
+        #expect(m.presentation == .choices(ended: .focus)) // the pointer does not shorten the deadline
+        m.handle(.pointer(inside: true))
+        m.handle(.timerFired(.autoClose))
+        #expect(m.presentation == .choices(ended: .focus)) // shown while the pointer stays
         m.handle(.pointer(inside: false))
         m.handle(.timerFired(.exit))
         #expect(m.presentation == .hidden)
         #expect(m.status == .awaiting(.focus))
+    }
+
+    @Test func fullscreenPendingDwellDoesNotChangeAutoChoices() {
+        var m = NotchMachine(status: .running(.focus), fullscreen: true)
+        m.handle(.pointer(inside: true)) // hot zone: dwell scheduled
+        let fx = m.handle(.sessionReachedZero(.focus))
+        #expect(fx.contains(.cancel(.dwell)))
+        m.handle(.timerFired(.dwell)) // a late dwell timer
+        #expect(m.expansion == .choicesAuto)
+        m.handle(.pointer(inside: false))
+        m.handle(.timerFired(.autoClose))
+        #expect(m.presentation == .hidden)
+    }
+
+    @Test func fullscreenDwellOnDoneOpensChoicesWithoutKey() {
+        for ended in [Phase.focus, .shortBreak] {
+            var m = NotchMachine(status: .running(ended), fullscreen: true)
+            m.handle(.sessionReachedZero(ended))
+            m.handle(.timerFired(.autoClose))
+            #expect(m.presentation == .hidden) // 4b, hidden in fullscreen
+            let fxIn = m.handle(.pointer(inside: true))
+            #expect(fxIn.contains(.schedule(.dwell, 1.0)))
+            let fx = m.handle(.timerFired(.dwell))
+            #expect(m.presentation == .choices(ended: ended))
+            #expect(!fx.contains(.makeKey))
+            #expect(!m.wantsKey)
+            m.handle(.pointer(inside: false))
+            m.handle(.timerFired(.exit))
+            #expect(m.presentation == .hidden)
+        }
+    }
+
+    @Test func enteringFullscreenClosesFullPanelFromDesktop() {
+        var m = NotchMachine(status: .running(.focus))
+        m.handle(.openFull(firstRun: false))
+        let fx = m.handle(.screen(hasNotch: true, fullscreen: true))
+        #expect(fx.contains(.resignKey))
+        #expect(!m.wantsKey)
+        #expect(m.presentation == .hidden)
+        m.handle(.pointer(inside: false))
+        m.handle(.timerFired(.exit))
+        #expect(m.presentation == .hidden)
+    }
+
+    @Test func fullPanelOpenedInFullscreenStays() {
+        var m = NotchMachine(status: .running(.focus), fullscreen: true)
+        m.handle(.pointer(inside: true))
+        m.handle(.timerFired(.dwell))
+        #expect(m.presentation == .collapsed)
+        m.handle(.clickShape)
+        #expect(m.presentation == .full(firstRun: false))
+        // A later fullscreen check (same state) does not close it.
+        let fx = m.handle(.screen(hasNotch: true, fullscreen: true))
+        #expect(!fx.contains(.resignKey))
+        #expect(m.presentation == .full(firstRun: false))
+        m.handle(.pointer(inside: false))
+        m.handle(.timerFired(.exit))
+        #expect(m.presentation == .full(firstRun: false))
+        m.handle(.escape)
+        #expect(m.presentation == .hidden)
     }
 
     @Test func fullscreenShowsSessionEndThenHidesAgain() {
