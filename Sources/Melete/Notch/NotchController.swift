@@ -268,6 +268,7 @@ final class NotchController {
 /// - MELETE_DEBUG_SEED=1: show sample tasks from an in-memory store (the real store is not touched).
 /// - MELETE_DEBUG_SECONDS=N: every session lasts N seconds, and sessions are not logged to the store.
 ///   With it, the running and peek states start a real focus session (it reaches 0:00 after N seconds).
+///   Side effects: the engine saves the cycle position/day to the real UserDefaults, and the chime plays.
 @MainActor
 private struct DebugOptions {
     var state: String?
