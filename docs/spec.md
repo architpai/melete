@@ -38,12 +38,12 @@ Not in v1: menu bar icon, global hotkey, right-click menu, CSV export, auto-paus
 | 4b | Done, no answer | Panel closed after 30 s. Right wing shows "Done", blinking, until the user chooses |
 | 7 | Hover peek | Current task or intention, large time, pause / skip / reset, bar, dots |
 | 8 | Click: full panel | Mode (Focus / Short / Long), time, Start, reset, intention field, task list, Stats icon, Settings (gear) icon |
-| 9 | Focus end | Panel expands by itself, chime plays. Choices: Start break / +5 min / Skip. Closes after 30 s → state 4b |
-| 10 | Break end | Panel expands, chime plays. Choices: Start focus / Stop. Closes after 30 s → state 4b |
+| 9 | Focus end | Panel expands by itself, chime plays. Choices: Start break / +5 min / Skip. Closes after 30 s → state 4b (on a fullscreen screen: stays until a choice) |
+| 10 | Break end | Panel expands, chime plays. Choices: Start focus / Stop. Closes after 30 s → state 4b (on a fullscreen screen: stays until a choice) |
 
 ## Displays
 
-- Follow the active screen (the screen with the pointer).
+- Follow the active screen (the screen with the pointer), but only to screens that are not fullscreen (see "Mixed screens").
 - Screen with notch: grow out of the notch.
 - Screen without notch: running = small black tab at top center (mock 5). The tab is a short form: time + bar only, no dots. Break / pause / done use the same icon and blink rules as the right wing. Idle = nothing shows; an invisible hover zone at top center opens it (mock 6-I).
 - Fullscreen app: hidden on that screen. Hover the top center for 1 s to show it; it hides when the pointer leaves (mock 4c).

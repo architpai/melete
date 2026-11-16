@@ -76,6 +76,8 @@ These fill the gaps the review found. They are in `TimerEngine` and in `spec.md`
 | Esc (phase 4) | One Esc commits the text edit and closes the full panel |
 | Action at the deadline (phase 4) | Every action first completes a session that is past 0:00. Pause, reset and skip then do nothing more; the choices show |
 | Task credit (phase 4) | Any focus session (counted or not) is credited to the task / intention selected when it ends. "+5" keeps the 0:00 credit |
+| Home screen (phase 5) | Follow the pointer only to non-fullscreen screens. Pointer on a fullscreen screen → stay on the home screen (last normal screen, else built-in, else first normal). Its top-center hot zone still reveals the notch there after 1 s; after the exit delay it returns home. All screens fullscreen → old behavior. Pure logic: `NotchScreenPicker` |
+| Session end in fullscreen (phase 5) | Choices open on the pointer's screen. In fullscreen: no 30 s deadline; becoming fullscreen cancels it; leaving fullscreen does not restart it. A full panel open at 0:00 shows the choices where it is |
 
 ## Notch shell technical notes (from the review)
 
@@ -86,7 +88,7 @@ These fill the gaps the review found. They are in `TimerEngine` and in `spec.md`
 - Notch geometry: `safeAreaInsets.top > 0` → notch; width = `frame.width − auxiliaryTopLeftArea.width − auxiliaryTopRightArea.width`. Else no-notch tab.
 - Level: start with `.mainMenu + 3` (boring.notch). Test with many status items: wings must not hide clicks on status items outside the wing area.
 - Low idle CPU: no timers when idle + collapsed. Redraw the countdown once per second only while it is visible (`TimelineView(.periodic)` or one `Timer`).
-- DEBUG: `MELETE_DEBUG_STATE` env var forces a notch state at launch (names: `idle, idleHover, running, break, paused, done, peek, full, focusEnd, breakEnd, noNotch, firstRun`) using `engine.debugForce` + view-state overrides.
+- DEBUG: `MELETE_DEBUG_STATE` env var forces a notch state at launch (names: `idle, idleHover, running, break, paused, done, peek, full, focusEnd, breakEnd, noNotch, firstRun`). Also `MELETE_DEBUG_SCREEN`, `MELETE_DEBUG_FULLSCREEN=builtin|external`, `MELETE_DEBUG_NO_FULLSCREEN`, `MELETE_DEBUG_SEED`, `MELETE_DEBUG_SECONDS` (writes real settings) using `engine.debugForce` + view-state overrides.
 
 ## Message board (delegates ↔ coordinator)
 
@@ -129,7 +131,9 @@ Rules:
 - Start focus → collapsed B: dots (= cycle length), time, bar. Pause → pause icon, blink. Break → cup, dashed bar.
 - Session end: panel opens, chime, choices; no answer → closes after 30 s → "Done" blinks; hover reopens choices.
 - External monitor: tab follows pointer screen; idle = nothing, hover zone (0.4 s) opens it.
-- Fullscreen video: hidden; shows at session end; 1 s hover at top center shows it.
+- Fullscreen video: hidden; shows at session end and stays until a choice; 1 s hover at top center shows it.
+- Mixed screens (one fullscreen, one normal): the notch stays on the normal screen when the pointer goes to the fullscreen screen. 1 s hover at the fullscreen screen's top center shows it there; it returns home when the pointer leaves, and after a choice.
+- A screen goes fullscreen while the choices show → they stay. The fullscreen app exits → the notch follows the pointer again. Unplug / plug in the external screen.
 - Tasks: add, select, rename, planned count, reorder, delete, count goes up at 0:00, mark done, count past plan.
 - Stats window and Settings window open from the panel icons. Settings changes apply to the next session. Quit from Settings.
 - Sleep the Mac mid-session → time is correct after wake.
