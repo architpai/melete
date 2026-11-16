@@ -253,6 +253,7 @@ final class NotchController {
 /// - MELETE_DEBUG_SCREEN=builtin|external: pin the notch to a screen.
 /// - MELETE_DEBUG_NO_FULLSCREEN=1: ignore fullscreen (for screenshots over a fullscreen app).
 /// - MELETE_DEBUG_SEED=1: show sample tasks from an in-memory store (the real store is not touched).
+/// - MELETE_DEBUG_SECONDS=N: every session lasts N seconds, and sessions are not logged to the store.
 @MainActor
 private struct DebugOptions {
     var state: String?
@@ -263,6 +264,7 @@ private struct DebugOptions {
     var taskStore: MeleteStore?
     /// Hover-type debug states ignore the real pointer so they stay put for screenshots.
     var pinned = false
+    var shortSessions: TimeInterval?
 
     init() {
         #if DEBUG
@@ -277,6 +279,7 @@ private struct DebugOptions {
         forceNoNotch = state == "noNotch"
         keepFirstRun = state != nil
         pinned = ["idleHover", "peek", "focusEnd", "breakEnd", "full", "firstRun"].contains(state ?? "")
+        shortSessions = env["MELETE_DEBUG_SECONDS"].flatMap(TimeInterval.init)
         if env["MELETE_DEBUG_SEED"] == "1", let s = try? MeleteStore(inMemory: true) {
             let a = s.addTask(title: "Write README", plannedPomodoros: 4); a.completedPomodoros = 2
             let b = s.addTask(title: "Review PR #12", plannedPomodoros: 2); _ = b
@@ -289,6 +292,11 @@ private struct DebugOptions {
 
     func apply(to c: NotchController) {
         #if DEBUG
+        if let n = shortSessions {
+            let e = c.model.engine
+            e.durations = TimerDurations(focus: n, shortBreak: n, longBreak: n, cycleLength: e.durations.cycleLength)
+            e.onSessionEnded = nil
+        }
         guard let state else { return }
         let e = c.model.engine
         let now = Date()
