@@ -38,11 +38,7 @@ final class PointerTracker {
                 guard let self, let panel = self.panel else { return false }
                 if type == .keyDown {
                     guard keyCode == 53, window === panel else { return false }
-                    // Esc while typing ends the edit first; the next Esc closes the panel.
-                    if let editor = panel.firstResponder as? NSTextView, editor.isFieldEditor {
-                        panel.makeFirstResponder(nil)
-                        return true
-                    }
+                    // One Esc closes the panel, also while typing: the controller commits the text first.
                     self.onEscape()
                     return true
                 } else if window !== panel {

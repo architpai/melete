@@ -73,20 +73,31 @@ final class NotchController {
 
     fileprivate func send(_ event: NotchEvent) {
         let before = vm.machine.presentation
+        let wasPinnedToScreen = !vm.machine.followsPointerScreen
         let effects = vm.machine.handle(event)
         for fx in effects { run(fx) }
         let after = vm.machine.presentation
         if before != after { NotchLog.log("\(event) → \(after)") }
         updatePanel()
+        // An expansion closed: the pointer may already be on another screen. Follow it now, not on the next move.
+        // (The nested `.screen` send starts unpinned, so this does not recurse.)
+        if wasPinnedToScreen && vm.machine.followsPointerScreen { recheckPointer() }
     }
+
+    /// Re-read the real pointer location: screen, hit rect membership, mouse pass-through.
+    private func recheckPointer() { pointerMoved(NSEvent.mouseLocation) }
 
     private func run(_ fx: NotchEffect) {
         switch fx {
         case let .schedule(kind, delay):
             timers[kind]?.cancel()
             let item = DispatchWorkItem { [weak self] in
-                self?.timers[kind] = nil
-                self?.send(.timerFired(kind))
+                guard let self else { return }
+                self.timers[kind] = nil
+                // The deadline depends on whether the pointer is inside the shape. A pointer that has not
+                // moved since the shape grew has no fresh move event: read it now.
+                if kind == .autoClose { self.recheckPointer() }
+                self.send(.timerFired(kind))
             }
             timers[kind] = item
             DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: item)
@@ -97,6 +108,10 @@ final class NotchController {
             panel.allowsKey = true
             panel.makeKey()
         case .resignKey:
+            // End the field editor (its text is already in the bindings), then save the drafts before
+            // the full panel view goes away.
+            panel.makeFirstResponder(nil)
+            vm.commitTextEdits()
             panel.resignKey()
             panel.allowsKey = false
         case .markFirstRunDone:
@@ -144,11 +159,7 @@ final class NotchController {
 
     /// Stay on the screen while the user works in an open panel.
     private var canFollowPointer: Bool {
-        if debug.screenPin != nil { return false }
-        switch vm.machine.expansion {
-        case .none: return true
-        case .hover, .full, .choicesAuto, .choicesPinned: return false
-        }
+        debug.screenPin == nil && vm.machine.followsPointerScreen
     }
 
     private func sessionReachedZero(_ phase: Phase) {
@@ -157,6 +168,8 @@ final class NotchController {
             moveTo(s)
         }
         send(.sessionReachedZero(phase))
+        // The choices shape is larger than the collapsed one: the pointer may be inside it without a move.
+        recheckPointer()
     }
 
     // MARK: Screens
@@ -254,6 +267,7 @@ final class NotchController {
 /// - MELETE_DEBUG_NO_FULLSCREEN=1: ignore fullscreen (for screenshots over a fullscreen app).
 /// - MELETE_DEBUG_SEED=1: show sample tasks from an in-memory store (the real store is not touched).
 /// - MELETE_DEBUG_SECONDS=N: every session lasts N seconds, and sessions are not logged to the store.
+///   With it, the running and peek states start a real focus session (it reaches 0:00 after N seconds).
 @MainActor
 private struct DebugOptions {
     var state: String?
@@ -302,6 +316,8 @@ private struct DebugOptions {
         let now = Date()
         if let first = (taskStore ?? c.model.store).tasks().first { e.currentTaskID = first.id }
         switch state {
+        case "running" where shortSessions != nil, "peek" where shortSessions != nil:
+            e.startFocus() // a real session of N seconds, so 0:00 really happens
         case "running", "peek", "noNotch":
             e.debugForce(phase: .focus, state: .running(endsAt: now.addingTimeInterval(1122), total: 1500), cyclePosition: 2)
         case "break":

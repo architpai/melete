@@ -8,12 +8,13 @@ import SwiftUI
 struct TaskListView: View {
     let vm: NotchViewModel
     @Query(sort: [SortDescriptor(\TaskItem.sortIndex), SortDescriptor(\TaskItem.createdAt)]) private var tasks: [TaskItem]
-    @State private var adding = false
-    @State private var newTitle = ""
-    @State private var renaming: UUID?
-    @State private var renameText = ""
     @State private var rowFrames: [UUID: CGRect] = [:]
     @FocusState private var focus: Field?
+    // Drafts live in the view model so the controller can commit them when the panel closes.
+    private var adding: Bool { get { vm.addingTask } nonmutating set { vm.addingTask = newValue } }
+    private var newTitle: String { get { vm.newTaskTitle } nonmutating set { vm.newTaskTitle = newValue } }
+    private var renaming: UUID? { get { vm.renamingTask } nonmutating set { vm.renamingTask = newValue } }
+    private var renameText: String { get { vm.renameText } nonmutating set { vm.renameText = newValue } }
 
     private enum Field: Hashable { case add, rename }
 
@@ -92,7 +93,7 @@ struct TaskListView: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel(t.isDone ? "Mark not done" : "Mark done")
             if renaming == t.id {
-                TextField("", text: $renameText)
+                TextField("", text: Bindable(vm).renameText)
                     .textFieldStyle(.plain)
                     .focused($focus, equals: .rename)
                     .onSubmit { commitRename(t) }
@@ -163,7 +164,7 @@ struct TaskListView: View {
         HStack(spacing: 9) {
             Image(systemName: "plus").font(.system(size: 10, weight: .semibold)).frame(width: 16)
             if adding {
-                TextField("", text: $newTitle, prompt: Text("New task").foregroundStyle(Color.white.opacity(0.38)))
+                TextField("", text: Bindable(vm).newTaskTitle, prompt: Text("New task").foregroundStyle(Color.white.opacity(0.38)))
                     .textFieldStyle(.plain)
                     .focused($focus, equals: .add)
                     .onSubmit(addTask)
