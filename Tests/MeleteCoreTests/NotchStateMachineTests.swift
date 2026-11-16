@@ -194,6 +194,17 @@ struct NotchStateMachineTests {
         #expect(m.presentation == .hidden)
     }
 
+    @Test func fullscreenSessionEndStaysWhilePointerInside() {
+        var m = NotchMachine(status: .running(.focus), fullscreen: true)
+        m.handle(.sessionReachedZero(.focus))
+        m.handle(.pointer(inside: true))
+        #expect(m.presentation == .choices(ended: .focus))
+        m.handle(.pointer(inside: false))
+        m.handle(.timerFired(.exit))
+        #expect(m.presentation == .hidden)
+        #expect(m.status == .awaiting(.focus))
+    }
+
     @Test func fullscreenShowsSessionEndThenHidesAgain() {
         var m = NotchMachine(status: .running(.focus), fullscreen: true)
         m.handle(.sessionReachedZero(.focus))

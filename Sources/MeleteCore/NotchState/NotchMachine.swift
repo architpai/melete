@@ -242,7 +242,9 @@ public struct NotchMachine: Equatable, Sendable {
         switch expansion {
         case .choicesAuto:
             // The user came to look: now it behaves like a hover panel (closes when the pointer leaves).
+            // In fullscreen it stays shown until then.
             expansion = .hover
+            if fullscreen { revealed = true }
             fx.append(.cancel(.autoClose))
         case .none:
             if !suppressHover { expansion = .hover }
