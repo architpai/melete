@@ -38,6 +38,11 @@ struct TaskListView: View {
         }
         .scrollIndicators(.never)
         .scrollBounceBehavior(.basedOnSize)
+        .onChange(of: focus) { _, now in
+            // Focus left a field (click elsewhere, Esc): keep the rename, close an empty add row.
+            if now != .rename, let id = renaming, let t = tasks.first(where: { $0.id == id }) { commitRename(t) }
+            if now != .add, adding, newTitle.trimmingCharacters(in: .whitespaces).isEmpty { adding = false }
+        }
     }
 
     /// Drag to reorder (a plain gesture: List drag-and-drop does not start in a non-activating panel).
@@ -91,7 +96,6 @@ struct TaskListView: View {
                     .textFieldStyle(.plain)
                     .focused($focus, equals: .rename)
                     .onSubmit { commitRename(t) }
-                    .onExitCommand { renaming = nil }
             } else {
                 Text(t.title)
                     .strikethrough(t.isDone)
@@ -163,7 +167,6 @@ struct TaskListView: View {
                     .textFieldStyle(.plain)
                     .focused($focus, equals: .add)
                     .onSubmit(addTask)
-                    .onExitCommand { adding = false; newTitle = "" }
             } else {
                 Text("Add task").frame(maxWidth: .infinity, alignment: .leading)
             }

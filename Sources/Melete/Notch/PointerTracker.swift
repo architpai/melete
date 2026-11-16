@@ -31,15 +31,24 @@ final class PointerTracker {
             MainActor.assumeIsolated { self?.onClickOutside() }
         }) { monitors.append(g) }
         if let l = NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown, .keyDown], handler: { [weak self] e in
-            MainActor.assumeIsolated {
-                guard let self else { return }
-                if e.type == .keyDown {
-                    if e.keyCode == 53, e.window === self.panel { self.onEscape() }
-                } else if e.window !== self.panel {
+            let type = e.type, keyCode = e.keyCode, window = e.window
+            let consume = MainActor.assumeIsolated { () -> Bool in
+                guard let self, let panel = self.panel else { return false }
+                if type == .keyDown {
+                    guard keyCode == 53, window === panel else { return false }
+                    // Esc while typing ends the edit first; the next Esc closes the panel.
+                    if let editor = panel.firstResponder as? NSTextView, editor.isFieldEditor {
+                        panel.makeFirstResponder(nil)
+                        return true
+                    }
+                    self.onEscape()
+                    return true
+                } else if window !== panel {
                     self.onClickOutside()
                 }
+                return false
             }
-            return e
+            return consume ? nil : e
         }) { monitors.append(l) }
     }
 
