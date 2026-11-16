@@ -31,7 +31,9 @@ final class PointerTracker {
             MainActor.assumeIsolated { self?.onClickOutside() }
         }) { monitors.append(g) }
         if let l = NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown, .keyDown], handler: { [weak self] e in
-            let type = e.type, keyCode = e.keyCode, window = e.window
+            // `keyCode` raises on mouse events: read it only for key events.
+            let type = e.type, window = e.window
+            let keyCode: UInt16 = type == .keyDown ? e.keyCode : 0
             let consume = MainActor.assumeIsolated { () -> Bool in
                 guard let self, let panel = self.panel else { return false }
                 if type == .keyDown {
