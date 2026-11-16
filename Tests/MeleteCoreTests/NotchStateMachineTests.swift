@@ -246,7 +246,7 @@ struct NotchStateMachineTests {
     }
 
     @Test func fullscreenHidesUntilDwell() {
-        var m = NotchMachine(status: .running(.focus), fullscreen: true)
+        var m = NotchMachine(status: .running(.focus), hasNotch: false, fullscreen: true)
         #expect(m.presentation == .hidden)
         #expect(m.usesHotZone)
         let fx = m.handle(.pointer(inside: true))
@@ -259,7 +259,7 @@ struct NotchStateMachineTests {
     }
 
     @Test func fullscreenIdleDwellShowsStart() {
-        var m = NotchMachine(fullscreen: true)
+        var m = NotchMachine(hasNotch: false, fullscreen: true)
         m.handle(.pointer(inside: true))
         m.handle(.timerFired(.dwell))
         #expect(m.presentation == .idleHover)
@@ -270,7 +270,7 @@ struct NotchStateMachineTests {
 
     // Rule C (user test F2): in fullscreen the auto choices have no deadline; they stay until the user chooses.
     @Test func fullscreenSessionEndChoicesStayUntilChosen() {
-        var m = NotchMachine(status: .running(.focus), fullscreen: true)
+        var m = NotchMachine(status: .running(.focus), hasNotch: false, fullscreen: true)
         let fx = m.handle(.sessionReachedZero(.focus))
         #expect(!fx.contains { if case .schedule(.autoClose, _) = $0 { true } else { false } })
         #expect(fx.contains(.cancel(.autoClose)))
@@ -292,7 +292,7 @@ struct NotchStateMachineTests {
     }
 
     @Test func fullscreenAutoChoicesStillCloseOnEscapeOrPinnedClickOutside() {
-        var m = NotchMachine(status: .running(.focus), fullscreen: true)
+        var m = NotchMachine(status: .running(.focus), hasNotch: false, fullscreen: true)
         m.handle(.sessionReachedZero(.focus))
         m.handle(.escape)
         #expect(m.presentation == .hidden)
@@ -325,7 +325,7 @@ struct NotchStateMachineTests {
     }
 
     @Test func leavingFullscreenDoesNotStartADeadline() {
-        var m = NotchMachine(status: .running(.focus), fullscreen: true)
+        var m = NotchMachine(status: .running(.focus), hasNotch: false, fullscreen: true)
         m.handle(.sessionReachedZero(.focus))
         let fx = m.handle(.screen(hasNotch: false, fullscreen: false)) // the fullscreen app exits
         #expect(!fx.contains { if case .schedule(.autoClose, _) = $0 { true } else { false } })
@@ -337,7 +337,7 @@ struct NotchStateMachineTests {
 
     // Rule B: a fullscreen reveal keeps the panel on that screen until the exit delay ends.
     @Test func fullscreenRevealPinsScreenUntilExit() {
-        var m = NotchMachine(status: .running(.focus), fullscreen: true)
+        var m = NotchMachine(status: .running(.focus), hasNotch: false, fullscreen: true)
         #expect(m.followsPointerScreen)
         m.handle(.pointer(inside: true))
         #expect(m.followsPointerScreen) // dwell pending: leaving the hot zone may send it home at once
@@ -353,7 +353,7 @@ struct NotchStateMachineTests {
     }
 
     @Test func fullscreenPendingDwellDoesNotChangeAutoChoices() {
-        var m = NotchMachine(status: .running(.focus), fullscreen: true)
+        var m = NotchMachine(status: .running(.focus), hasNotch: false, fullscreen: true)
         m.handle(.pointer(inside: true)) // hot zone: dwell scheduled
         let fx = m.handle(.sessionReachedZero(.focus))
         #expect(fx.contains(.cancel(.dwell)))
@@ -370,7 +370,7 @@ struct NotchStateMachineTests {
             var m = NotchMachine(status: .running(ended))
             m.handle(.sessionReachedZero(ended))
             m.handle(.timerFired(.autoClose))
-            m.handle(.screen(hasNotch: true, fullscreen: true))
+            m.handle(.screen(hasNotch: false, fullscreen: true))
             #expect(m.presentation == .hidden) // 4b, hidden in fullscreen
             let fxIn = m.handle(.pointer(inside: true))
             #expect(fxIn.contains(.schedule(.dwell, 1.0)))
@@ -387,7 +387,7 @@ struct NotchStateMachineTests {
     @Test func enteringFullscreenClosesFullPanelFromDesktop() {
         var m = NotchMachine(status: .running(.focus))
         m.handle(.openFull(firstRun: false))
-        let fx = m.handle(.screen(hasNotch: true, fullscreen: true))
+        let fx = m.handle(.screen(hasNotch: false, fullscreen: true))
         #expect(fx.contains(.resignKey))
         #expect(!m.wantsKey)
         #expect(m.presentation == .hidden)
@@ -397,14 +397,14 @@ struct NotchStateMachineTests {
     }
 
     @Test func fullPanelOpenedInFullscreenStays() {
-        var m = NotchMachine(status: .running(.focus), fullscreen: true)
+        var m = NotchMachine(status: .running(.focus), hasNotch: false, fullscreen: true)
         m.handle(.pointer(inside: true))
         m.handle(.timerFired(.dwell))
         #expect(m.presentation == .collapsed)
         m.handle(.clickShape)
         #expect(m.presentation == .full(firstRun: false))
         // A later fullscreen check (same state) does not close it.
-        let fx = m.handle(.screen(hasNotch: true, fullscreen: true))
+        let fx = m.handle(.screen(hasNotch: false, fullscreen: true))
         #expect(!fx.contains(.resignKey))
         #expect(m.presentation == .full(firstRun: false))
         m.handle(.pointer(inside: false))
@@ -415,7 +415,7 @@ struct NotchStateMachineTests {
     }
 
     @Test func fullscreenShowsSessionEndThenHidesAfterChoice() {
-        var m = NotchMachine(status: .running(.focus), fullscreen: true)
+        var m = NotchMachine(status: .running(.focus), hasNotch: false, fullscreen: true)
         m.handle(.sessionReachedZero(.focus))
         #expect(m.presentation == .choices(ended: .focus))
         m.handle(.timerFired(.autoClose))
@@ -423,6 +423,29 @@ struct NotchStateMachineTests {
         // The choice (via the engine) hides it again.
         m.handle(.engine(.running(.shortBreak)))
         #expect(m.presentation == .hidden)
+    }
+
+    // User test (16 Nov): on a notched screen a fullscreen app leaves a black strip around the notch,
+    // so the notch stays visible there. The fullscreen flag still removes the 30 s session-end deadline.
+    @Test func notchedFullscreenScreenStaysVisible() {
+        var m = NotchMachine(status: .running(.focus), hasNotch: true, fullscreen: true)
+        #expect(m.presentation == .collapsed)
+        #expect(!m.usesHotZone)
+        let fx = m.handle(.pointer(inside: true))
+        #expect(!fx.contains(.schedule(.dwell, 1.0)))
+        #expect(m.presentation == .peek)
+        m.handle(.pointer(inside: false))
+        m.handle(.timerFired(.exit))
+        #expect(m.presentation == .collapsed)
+        let end = m.handle(.sessionReachedZero(.focus))
+        #expect(m.presentation == .choices(ended: .focus))
+        #expect(!end.contains(.schedule(.autoClose, 30)))
+        m.handle(.timerFired(.autoClose))
+        #expect(m.presentation == .choices(ended: .focus))
+        m.handle(.engine(.idle))
+        #expect(m.presentation == .hidden) // idle = the normal notch
+        m.handle(.pointer(inside: true))
+        #expect(m.presentation == .idleHover) // Start at once, no 1 s dwell
     }
 
     @Test func screenChangeResetsHover() {

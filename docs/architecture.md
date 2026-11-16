@@ -76,7 +76,7 @@ These fill the gaps the review found. They are in `TimerEngine` and in `spec.md`
 | Esc (phase 4) | One Esc commits the text edit and closes the full panel |
 | Action at the deadline (phase 4) | Every action first completes a session that is past 0:00. Pause, reset and skip then do nothing more; the choices show |
 | Task credit (phase 4) | Any focus session (counted or not) is credited to the task / intention selected when it ends. "+5" keeps the 0:00 credit |
-| Home screen (phase 5) | Follow the pointer only to non-fullscreen screens. Pointer on a fullscreen screen → stay on the home screen (last normal screen, else built-in, else first normal). Its top-center hot zone still reveals the notch there after 1 s; after the exit delay it returns home. All screens fullscreen → old behavior. Pure logic: `NotchScreenPicker` |
+| Home screen (phase 5) | Follow the pointer only to non-fullscreen screens. Pointer on a fullscreen screen → stay on the home screen (last normal screen, else built-in, else first normal). Its top-center hot zone still reveals the notch there after 1 s; after the exit delay it returns home. All screens fullscreen → old behavior. A notched screen never hides the notch for fullscreen (`NotchMachine.hidesForFullscreen`), so it is always a valid home; its fullscreen flag only removes the 30 s deadline. Pure logic: `NotchScreenPicker` |
 | Session end in fullscreen (phase 5) | Choices open on the pointer's screen. In fullscreen: no 30 s deadline; becoming fullscreen cancels it; leaving fullscreen does not restart it. A full panel open at 0:00 shows the choices where it is |
 
 ## Notch shell technical notes (from the review)

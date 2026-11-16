@@ -240,7 +240,8 @@ final class NotchController {
             layouts[s.displayID] = layoutFor(s)
         }
         screenInfos = screens.map {
-            NotchScreenInfo(id: $0.displayID, fullscreen: isFullscreen($0),
+            // Picker "fullscreen" = the notch hides here. A notched screen never hides it (black strip).
+            NotchScreenInfo(id: $0.displayID, fullscreen: isFullscreen($0) && $0.safeAreaInsets.top <= 0,
                             builtIn: CGDisplayIsBuiltin($0.displayID) != 0 || $0.safeAreaInsets.top > 0)
         }
         NotchLog.log("screens " + screens.map { "\($0.localizedName) fs=\(isFullscreen($0))" }.joined(separator: ", "))

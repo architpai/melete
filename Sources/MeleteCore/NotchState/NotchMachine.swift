@@ -105,9 +105,14 @@ public struct NotchMachine: Equatable, Sendable {
         self.status = status; self.hasNotch = hasNotch; self.fullscreen = fullscreen; self.timings = timings
     }
 
+    /// Fullscreen hides the notch only on a screen without a notch. On a notched screen a fullscreen app
+    /// leaves a black strip around the notch, so the notch stays visible there (user test, 16 Nov).
+    /// `fullscreen` itself still decides the session-end deadline (no 30 s close in fullscreen).
+    public var hidesForFullscreen: Bool { fullscreen && !hasNotch }
+
     /// False while hidden by a fullscreen app.
     public var isShown: Bool {
-        if !fullscreen || revealed { return true }
+        if !hidesForFullscreen || revealed { return true }
         switch expansion {
         case .full, .choicesAuto, .choicesPinned: return true
         case .none, .hover: return false
@@ -155,7 +160,7 @@ public struct NotchMachine: Equatable, Sendable {
 
         case .timerFired(.dwell):
             guard pointerInside, expansion == .none else { break }
-            if fullscreen && !revealed {
+            if hidesForFullscreen && !revealed {
                 revealed = true
                 switch status {
                 case .idle, .awaiting:
@@ -180,7 +185,7 @@ public struct NotchMachine: Equatable, Sendable {
             if pointerInside {
                 // The user is looking at it: close when the pointer leaves (normal exit delay).
                 expansion = .hover
-                if fullscreen { revealed = true }
+                if hidesForFullscreen { revealed = true }
             } else {
                 collapse(&fx)
             }
@@ -263,7 +268,7 @@ public struct NotchMachine: Equatable, Sendable {
     private mutating func pointerEntered(_ fx: inout [NotchEffect]) {
         fx.append(.cancel(.exit))
         if presentation == .hidden {
-            if fullscreen && !revealed {
+            if hidesForFullscreen && !revealed {
                 fx.append(.schedule(.dwell, timings.fullscreenDwell))
             } else if status.isIdle {
                 if hasNotch { expansion = .hover } else { fx.append(.schedule(.dwell, timings.hoverZoneDwell)) }
@@ -302,6 +307,6 @@ public struct NotchMachine: Equatable, Sendable {
         expansion = .none
         firstRun = false
         suppressHover = pointerInside
-        if fullscreen { revealed = false }
+        if hidesForFullscreen { revealed = false }
     }
 }
