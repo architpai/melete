@@ -92,7 +92,7 @@ These fill the gaps the review found. They are in `TimerEngine` and in `spec.md`
 
 ## Message board (delegates ↔ coordinator)
 
-Location: **`/Users/paiarchit/random-musing/melete/.board/`** — absolute path, outside the worktrees, gitignored. All agents use this path.
+Location: **`<repo root>/.board/`** — in the main checkout, outside the worktrees, gitignored. All agents use the absolute path of the main checkout.
 
 ```
 .board/
